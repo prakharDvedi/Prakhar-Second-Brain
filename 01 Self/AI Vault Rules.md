@@ -113,3 +113,9 @@ Create a standalone note when at least one is true:
 - multiple other notes naturally need to link to it
 
 Otherwise prefer adding information to an existing note.
+
+For recurring bugs or familiar systems:
+retrieve prior vault context first,
+then verify only the claims that matter against current code/runtime evidence.
+
+Do not re-investigate established history unless new evidence contradicts it.

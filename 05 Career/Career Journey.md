@@ -33,3 +33,9 @@ Strong synthesis from the evidence, not directly stated by either source.
 
 - Brinavv came first chronologically, but chronology alone is not being read as "less skilled" — the safety/observability work at Pear reflects the domain (trading) and available tooling (Langfuse) as much as it reflects growth. [[Resume#Resume Claims Needing Manual Verification|See open verification items]] before treating this as a settled growth narrative for interviews.
 - No claim is made about title, seniority, or team-size progression between the two — that data doesn't exist in either repo.
+
+## Knowledge Base Links
+
+- Brinavv foundations: [[04 Knowledge/Backend & APIs/Backend & APIs|Backend & APIs]], [[04 Knowledge/Frontend & Product Surfaces/Frontend & Product Surfaces|Frontend & Product Surfaces]], and [[04 Knowledge/Security & Trust/Security & Trust|Security & Trust]].
+- Pear's strongest deepening: [[04 Knowledge/AI & LLM Systems/AI & LLM Systems|AI & LLM Systems]], [[04 Knowledge/Distributed Systems & Reliability/Distributed Systems & Reliability|Distributed Systems & Reliability]], [[04 Knowledge/Web3 & Trading/Web3 & Trading|Web3 & Trading]], and [[04 Knowledge/DevOps & Deployment/DevOps & Deployment|DevOps & Deployment]].
+- Cross-role thread: [[04 Knowledge/Distributed Systems & Reliability/Multi-Adapter & Multi-Venue Consistency|Multi-Adapter & Multi-Venue Consistency]] and [[04 Knowledge/AI & LLM Systems/LLM Observability & Evaluation|LLM Observability & Evaluation]].

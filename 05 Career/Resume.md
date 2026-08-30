@@ -191,6 +191,11 @@ Ranked across both companies — not by recency.
 - **Brinavv product scale** — number of schools/students/staff actually using the ERP, if any went live, is unrecoverable from GitHub.
 - **Current PR states** — Pear PRs open as of 2026-08-30 (#639, #640, #641, #642) and Brinavv's #364 need a live status check before being cited as "shipped."
 
+## Knowledge Base
+
+- [[04 Knowledge/Knowledge]] — evidence-linked technical knowledge extracted from the work and project record.
+- Strongest areas: [[04 Knowledge/Web3 & Trading/Trading Execution Safety|Trading Execution Safety]], [[04 Knowledge/Distributed Systems & Reliability/Retry Semantics & Failure Recovery|Retry Semantics & Failure Recovery]], [[04 Knowledge/AI & LLM Systems/LLM Observability & Evaluation|LLM Observability & Evaluation]], [[04 Knowledge/AI & LLM Systems/RAG & Retrieval|RAG & Retrieval]], and [[04 Knowledge/AI & LLM Systems/Structured Outputs & Validation|Structured Outputs & Validation]].
+
 ---
 
 *Rebuilt 2026-08-30. Brinavv and Career Journey sections are new (from GitHub archaeology, `Navodayaraj/School-ERP-Backend` + `Navodayaraj/Frontend_Fianl`, author filter `prakharDvedi`). Pear Protocol section reuses [[02 Work/Pear Protocol/Resume Evidence]] without re-deriving it. SuprHire omitted — access blocked.*
