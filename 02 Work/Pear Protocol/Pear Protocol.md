@@ -4,6 +4,10 @@
 
 [[Current Focus]]
 
+## Open Initiatives
+
+- [[Agent Pear Revamp]] — Oracle/DEMI harness research and current direction for the AP redesign
+
 ## Work History
 
 [[My Work at Pear Protocol]]
