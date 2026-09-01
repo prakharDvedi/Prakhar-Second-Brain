@@ -44,10 +44,48 @@ AP already has a Twitter cron and batch-processing pattern in:
 
 One storage constraint: `packages/shared/src/kb/kb-index.ts` loads a pre-built local KB artifact. Live leaderboard data should remain API-driven. Campaign context may use the context/KB pipeline, but it needs source URLs, timestamps, deduplication and stale-data handling.
 
-## Next steps
+## Next steps (superseded — see Update below)
 
 1. Trace the existing AP context worker and find whether a GH adapter already exists.
 2. Inspect the VPS process and confirm whether it runs the AP context worker. The AP repo docs mention Railway for the context service, so the VPS ownership is not assumed.
 3. Identify the campaign sources and fields to extract.
 4. Add the automated campaign ingestion job using the existing worker pattern.
 5. Expose the stored campaign context to the agent. Leave live leaderboard API reads and TP/SL chart annotations to their separate paths.
+
+## Update — 2026-08-31
+
+Findings above confirmed, plus:
+
+- No GH adapter exists anywhere in `apps/context` (grep-clean) — GitHub ingestion is a from-scratch build, no existing pattern to extend.
+- **VPS question resolved as "not in either repo."** Grepped both repos for `VPS`/`vps` — no real hits. `apps/context` has no Dockerfile, only Railway config. Only off-Railway service is `apps/tg-fallback` (Telegram failover, unrelated purpose). If a VPS genuinely runs something, it's untracked in-repo — flagged to the team rather than assumed.
+- **Composer plug-in point found**, confirming no DAG node is needed: `ComposerService.buildExtraTools()` (`apps/agent/src/ai/dag/services/composer.service.ts:62-66`) is composer's on-demand toolset, independent of the planner/DAG graph — same place the existing `query_sm` tool is registered. Both the leaderboard tool and the campaign-info tool hook in here.
+- **No chart↔leaderboard integration point exists** in `chart.service.ts` (only unrelated match was HIP-3 volume-ranked-listing resolution) — the planned chart-integration PR was dropped rather than fabricated.
+- Ranking/scoring/PnL math on the backend confirmed **fully dynamic per-request** (positions + fills + funding + live Redis mark prices + X-linkage), no cache, no precompute table — `docs/leaderboard-design.md` §7.1/§7.7 explicitly accept "no rate limiting, no cache" as a known risk. AP-side TTL cache is therefore AP's own responsibility, not something backend provides.
+
+### Scope decision (via GitHub grooming)
+
+Groomed into **Epic #643** → **Story #644** (live leaderboard) / **Story #645** (campaign ingestion). Chart PR dropped from Story #644 per the finding above.
+
+Three of the five original open questions got MVP defaults rather than stakeholder sign-off, explicitly flagged as such in the issues (not silently treated as final):
+- Twitter/GH source lists → manual curated watch list (reusing the existing `/watch` mechanism), no auto-discovery
+- Campaign ↔ asset linkage → optional `campaignId`, best-effort, not forced
+- GH ingestion scope → releases only, no issues/PRs/changelog parsing
+
+Retrieval trigger resolved technically (not just recommended): on-demand tool call, matching the `query_sm` precedent — `ContextAssemblerService.build()` only formats findings from nodes that already ran, so "auto-inject every turn" would need either a new DAG node (excluded) or a standing prompt instruction: deferred, not built into MVP.
+
+### PR stack (all opened as empty scaffolds, stacked per-dependency — superseded, see Update below)
+
+Story #644: PR #646 → #647 → #648
+Story #645: PR #649 → #650 → #651 → #652 → #653
+
+Umbrella `development → main` promotion PR planned once all 8 land. See [[31st Aug 2026]] for the session log.
+
+## Update — 2026-08-31 (later same day) — PR stack corrected
+
+Verified against live GitHub state. All 8 stacked scaffolds above were closed the same day — confirmed unnecessary/premature (see [[31st Aug 2026]] for the check and full breakdown). Actual current state:
+
+- **Story #644 (leaderboard)**: reopened leaner as **#659 → #660** (2 PRs instead of 3 — the separate hardening/test PR was folded in). Both open.
+- **Story #645 (campaign ingestion)**: closed, no replacement PR opened yet — this axis is back to unstarted as of this check.
+- **#665** — `feat(charts): entry/TP/SL level annotations on position-aware charts` — opened same day, base `development`, open. Possibly related to the trade-idea annotation behavior noted above, not confirmed as the same initiative.
+
+Status as of this check: leaderboard axis in progress under #659/#660; campaign axis not yet restarted.
