@@ -229,3 +229,135 @@ A field the model structurally cannot answer honestly at generation time should 
 **Why it matters:** When designing structured output, ask not just "what field would be useful" but "can the model possibly know this at the moment it's asked" — if not, the schema itself is the fix.
 
 **Evidence:** [[My Work at Pear Protocol#2026-07-28 – 08-01 — Basket generation could only produce two-sided baskets, and had no way to tag them]]
+
+---
+
+### A shared try/catch turns a benign "message is not modified" into a fake outage
+
+A Telegram inline-keyboard toggle that re-fetches and re-renders will produce byte-identical content when the user re-taps the already-selected option; `editMessageText` then fails with 400 "message is not modified". If the fetch and the edit sit in one try/catch, that harmless edit error lands in the same handler as a real data-fetch failure — and the fallback edit overwrites good content with an error notice.
+
+**Context:** The `/leaderboard` venue toggle wrapped fetch + `editMessageText` in a single try/catch. Re-tapping the current venue re-rendered identical content → 400 not-modified → the catch replaced the correct board with "temporarily unavailable". Reproduced live in the dev bot log.
+
+**Why it matters:** Only a fetch failure means the data is unavailable; a delivery failure (not-modified, or an uneditable too-old message) is not an outage. Split them — fetch in one try/catch that decides the content, delivery in its own swallowing catch — so a re-render or stale-message edit can't masquerade as a backend failure. (Same reason the existing `linkvenue` toggle wraps each edit in its own swallow.)
+
+**Evidence:** PR #675, commit `618d646b` + regression test `telegram.update.leaderboard.spec.ts`; see [[1st Sep 2026]].
+
+---
+
+### One config value shared by two consumers on different services is a hidden fan-out
+
+A single env var named for one of its consumers can silently route a second consumer too — and if those consumers hit different services, repointing the var breaks the unnamed one with no signal at either call site.
+
+**Context:** `context`'s `STATS_BASE_URL` fed both `GET /categories` (categories service) and `QuantService.getBasketStats()` → `POST /stats/basket` (a different, Rust, service). A change repointed it on the reasonable-looking "only categories uses this" assumption; `/stats/basket` then 404'd, nulling basket stats, while a `No baskets generated` alert described a failure that wasn't happening.
+
+**Why it matters:** Name a config value for the route/service it addresses, not for one of its consumers — and when a var is repointed, grep every reader, not just the one the var is named after. Two routes on two services must not share one base-URL var. A validating type (`z.url()`) catches a malformed value at boot; it does not catch a well-formed value pointed at the wrong service — only enumerating the consumers does. Bonus tell: an alert that names a failure mode which the evidence contradicts ("no baskets generated" while rows are being written) is pointing at the wrong layer.
+
+**Evidence:** [[One Service URL Fed Two Different Services, Nulling Basket Stats]]; PRs #677 / #678; see [[2nd Sep 2026]].
+
+---
+
+### A model switch that lands right before an incident is a lead, not a verdict
+
+Timing correlation between a model swap and a new failure is a reasonable first hypothesis, but proving it requires replaying the exact captured production context against the actual models in the causal path — not just confirming which models were live at the time.
+
+**Context:** A user's "hallucinating TP/SL" report lined up with a same-day emergency Gemma→GPT-OSS-120B swap (Cerebras retired `gemma-4-31b`). But the two nodes actually producing the bad output had never run that swap: one had never run Gemma or GPT-OSS in its history, the other had been on GPT-OSS for three months already. Live-replaying the exact captured context found the real cause was a deterministic context bug (100% reproducible regardless of model), with the model only a secondary, conditional factor.
+
+**Why it matters:** A correlated timing story is cheap to construct and easy to stop at. The replay is what tells you whether the model is actually in the causal path, and if so, whether its failure rate is 100% (deterministic bug wearing a model's face) or genuinely conditional (a real model-reliability gap).
+
+**Evidence:** [[Stale Recall Memory and an Unpersisted skipRisk Flag Resurfaced Old TP-SL Preferences]]
+
+---
+
+### State that must survive across turns cannot live only in re-derived LLM context
+
+A flag or preference that the model has to re-notice and re-emit on every call, from raw conversation history alone, will eventually be forgotten — not because the model is unreliable in general, but because the instruction that set it can silently age out of whatever window or summary is feeding the model that turn.
+
+**Context:** A user's "no sl no tp" instruction governed a multi-turn trade-building flow (open, then several resizes). The flag enforcing it (`skipRisk`) was never persisted anywhere outside conversation history. Once the raw history window (3 turns) and a stale multi-day recall summary both stopped carrying the instruction, the flag was gone — the model had no way to know it had ever been set, and a live replay confirmed this was 100% reproducible given that context, on the actual production model.
+
+**Why it matters:** Before relying on "the model will remember and re-state it," ask whether the state in question needs to survive longer than the window that's actually guaranteed to carry it. If yes, it belongs in structured, server-persisted state with the model able to override it, not in re-derived prose.
+
+**Evidence:** [[Stale Recall Memory and an Unpersisted skipRisk Flag Resurfaced Old TP-SL Preferences]]
+
+---
+
+### A schema that allows "nothing selected" needs to be caught structurally, not left to the model's next mistake
+
+When a structured-output schema types every routing field as optional/nullable, a classifier can legally emit an answer that selects nothing at all — and if no downstream check requires at least one field to be meaningfully set, that degenerate output silently reaches the consumer with zero context instead of triggering the system's own known fallback.
+
+**Context:** A planner returned every routing node `null`, `generalChat: false`, and `clarify: null` for a real user query. The Zod schema allowed it (no invariant requiring at least one truthy field); the DAG's only two post-plan gates both no-op'd for this shape; the executor treated zero active nodes as a normal, unlogged no-op. The system already had a purpose-built fallback for "nothing to route" (`createDefaultPlan()`, which is `generalChat: true`) — it just wasn't wired to this trigger, only to a fully-missing structured response.
+
+**Why it matters:** "The prompt says to always pick something" is not enforcement. If a schema can structurally represent a null/empty/contradictory decision, something downstream — a refinement, a validation step, a deterministic fallback — has to reject or repair it, or a single bad sample silently reaches the user with no signal that anything went wrong.
+
+**Evidence:** [[Kalshi Odds Query Fell Into a Planner Routing Dead Zone With No Empty-Plan Fallback]]
+
+---
+
+### A PR's Closes list can go stale the moment a new commit lands on its branch
+
+A PR description's `Closes #N` list is only accurate as of the moment it was written — if the branch it's attached to gets a new commit for a different issue afterward, nothing re-checks whether the description still matches what the branch actually contains.
+
+**Context:** Happened twice in the same session, on two different PRs. PR #757 closed 3 of the 4 issues its branch's commits actually resolved (missing the systemd-unit task, added on a later commit). PR #758 was opened correctly scoped to one issue, then a second issue's commit landed on the same branch — its description still claims that second issue is "a separate PR next in the chain," which stopped being true the moment that commit was pushed.
+
+**Why it matters:** Before merging any PR, re-diff its actual commits against its stated `Closes` list — don't trust that the list was ever kept in sync after the PR was opened, especially on a branch that keeps receiving commits for follow-on tasks in the same story.
+
+**Evidence:** [[Harness Integration/Step 3 — Tokenomist + OI Canaries on Hetzner]]
+
+---
+
+### A framework's graceful-shutdown only tears down what it manages
+
+Calling a framework's own `close()`/shutdown method will clean up the providers it manages by its own lifecycle hooks — it has no way to know about a raw client instance a factory provider just handed back, unless that client itself is wired to a lifecycle hook.
+
+**Context:** A NestJS one-shot CLI script called `app.close()` after finishing its work, expecting a clean process exit. It hung indefinitely both times, needing a manual `Ctrl+C`. The cause: the `REDIS`/`ASSET_INDEX_REDIS` tokens were plain factory providers (`new Redis(url)`, no `OnModuleDestroy`) — `app.close()` correctly ran every managed provider's teardown, but had no hook into these raw clients' open sockets, which kept the event loop alive.
+
+**Why it matters:** Any one-shot process built on a framework's DI container should explicitly quit/close every raw external-client instance it holds (Redis, DB pools instantiated outside the framework's own service wrappers, etc.) in a `finally` block after the framework's own shutdown — don't assume `app.close()` reaches everything just because the client was obtained via the DI container.
+
+**Evidence:** [[Harness Integration/Step 3 — Tokenomist + OI Canaries on Hetzner]]
+
+---
+
+### Silence after switching branches on a remote box can mean the wrong code is running, not a hang
+
+A command that "hangs" right after a branch switch on a remote box may not be stuck at all — if the branch in the working tree doesn't actually contain the flag/code being tested, the process can silently fall through to a completely different, valid code path (like the app's normal always-on boot) that looks identical to a hang because it, correctly, never exits.
+
+**Context:** A `git stash pop` done to recover unrelated WIP silently left a Hetzner checkout back on the wrong branch. The one-shot flag being tested (`--tokenomist-once`) didn't exist on that branch at all, so it was ignored, and the process booted the normal long-running server instead — which of course never returns to the shell. A long, otherwise-reasonable debugging session (Redis reachability, auth, ioredis diagnostics) chased this as if it were a real bug before the branch mismatch was noticed.
+
+**Why it matters:** Before debugging an unexplained hang on a remote checkout, confirm `git branch --show-current` and `git log --oneline -3` match what's actually being tested — a silent no-op fallback can be indistinguishable from a genuine freeze until the branch itself is checked.
+
+**Evidence:** [[Harness Integration/Step 3 — Tokenomist + OI Canaries on Hetzner]]
+
+---
+
+### A session-level instruction can silently override a stored preference
+
+A stated personal preference (e.g. "no AI attribution trailer in commits") is not self-enforcing — a session-start instruction that explicitly says it replaces earlier guidance will win by default unless the conflict is checked for and flagged, rather than just assumed away.
+
+**Context:** A standing preference was on file for no `Co-Authored-By: Claude` trailer in commits. A session-start reminder in this session explicitly said it "replaces any earlier attribution guidance" and reasserted the trailer. Two commits got it added before the user noticed and asked for removal. Unpushed, so fixing it was a clean rewrite (`git reset --soft` past both, re-split, recommit) with no shared-history risk — would have been worse if already pushed.
+
+**Why it matters:** At the start of any session that will create commits/PRs, check whether a session-level instruction conflicts with a known standing preference, and surface the conflict instead of silently picking whichever one is more recent.
+
+---
+
+### A provider redeclared in each module's own `providers` array creates one instance per module, not a shared singleton
+
+In NestJS, importing the same *module class* from several places gives you one true app-wide singleton of that module and its providers — but repeating the same *provider literal* directly inside multiple different modules' own `providers` arrays does not get deduplicated. Each module silently gets its own separate instance of that token.
+
+**Context:** A prior fix ([[Engineering Lessons#A framework's graceful-shutdown only tears down what it manages]]) added explicit `redis.quit()` calls for the two raw-Redis tokens known at the time, and manual validation looked clean. It wasn't: `TwitterModule`/`SentimentModule`/`StatsModule` (and, in a sibling app, `AssetIndexModule`/`CoinIndexModule`/`TokenomistIndexModule`) each declared their own `RedisProvider` locally, so 4 (and 3) separate ioredis clients existed per app, not the two anyone knew about. `quit()` only ever closed one; real systemd runs hung 28 minutes past "one-shot complete" before being killed on timeout. A code review's mocked-container reproduction caught the true instance count; the fix was importing a shared `RedisModule` (a genuine module-class singleton) instead of redeclaring the provider per module.
+
+**Why it matters:** when auditing "does every raw external client get closed," missing tokens aren't the only risk — the same token can have multiple silent *instances* because it was declared as a provider literal in more than one module. Grep the provider's name across module files: if it appears in more than one module's own `providers` array (not via a shared imported module), that's N instances, not one.
+
+**Evidence:** [[Harness Integration/Step 3 — Tokenomist + OI Canaries on Hetzner#Update — 2026-09-16 (code review found the #748/#753 Redis fix was incomplete; root-caused and fixed)]]
+
+**Evidence:** [[Harness Integration/Step 4 — Watched-Accounts + Image-Retention Batch on Hetzner]]
+
+---
+
+### An LLM-quality win can be an illusion if the pipeline rewrites the output downstream
+
+A model that scores better in a blind quality judge can still produce no better end result, if a later pipeline stage discards or rewrites exactly the part the model did better.
+
+**Context:** In the interest-distiller Claude-vs-Cerebras spike, a neutral judge rated Opus's watch triggers better (more tailored, pair/basket-aware). But `trigger-synthesizer` templates any pair/ratio statement (`isPairStatStatement`) before arming Elfa, which is exactly where Opus differed most, so its edge mostly never reached the fired query.
+
+**Why it matters:** Evaluate the artifact the system actually acts on (the fired trigger), not the raw model output. Judge scores on pre-pipeline text can overstate a model's real-world value when a downstream stage normalizes it away.
+
+**Evidence:** [[Harness Integration/Step 7 — Claude CLI Feasibility Research for interest-distiller#Update — 2026-09-16 (spike run + results + decision)]]

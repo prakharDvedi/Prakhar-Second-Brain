@@ -78,6 +78,24 @@ The main benefit is modularity. Telegram, web and future surfaces can call the s
 
 The main risk is creating two agent loops. The boundary needs to be explicit: Oracle owns conversation and high-level orchestration; AP owns deterministic task execution. Oracle should not independently recreate trade planning or bypass AP's confirmation and receipt rules.
 
+## Update — 2026-09-01 — operational integration and VPS study
+
+The intended harness was clarified: Oracle is the agent harness/control plane, not the existing AP integration-test harness. The working shape remains:
+
+```text
+Oracle harness → AP pair-trading tools/DAG → Pear V3 backend → Hyperliquid
+```
+
+The current operational assignment is to inventory AP's existing processes and background workers, then classify which could safely move to the Hetzner `ap-tg-fallback` VPS to create room for the Oracle integration. Nothing has been approved for movement yet. The first deliverable is a read-only process/deployment map; the senior will decide what moves.
+
+SSH access to the Hetzner server was successfully established as Linux user `prakh`. The server is Ubuntu 24.04 and runs Docker/containerd. A Node process running `apps/tg-fallback/dist/main.js` was visible on the host; no custom application systemd unit was visible in the inspected service list. The host snapshot was healthy at inspection time (low load, about 8% memory use, about 31% root-disk use). The user is not in the Docker group, so `docker ps` is denied; Docker inspection still needs senior-approved access. These are observations from one point in time, not a complete deployment inventory.
+
+The expected next study is to map each AP service/consumer by start mechanism, queue or cron ownership, dependencies, state, side effects, crash/retry behavior, and migration risk. In particular, `ap-worker` and any execution/realtime consumers must not be moved or duplicated casually. The fallback host must also remain reliable when it is needed for Telegram failover.
+
+The operational handoff is tracked in [[Harness Integration/Step 1 — AP Background Processes and Hetzner VPS Inventory]].
+
+The coding-tool installation task was also clarified as separate from the architecture study: install the requested Cloud/Claude Code tool on the approved target, while the senior handles authentication. The exact product name, target machine, version, and installation command still need confirmation before running an installer.
+
 ## Oracle cost and ownership
 
 Oracle is being considered as an open-source or self-hosted harness, not as a venue that automatically takes a percentage of every Pear trade. The docs and CLI setup did not establish a mandatory Oracle trading fee. Actual costs still include model calls, embeddings, APIs, VPS or other hosting, monitoring and engineering maintenance. A BUSL license question remains if Oracle is embedded in a competing hosted product, so this needs a direct licensing check before committing to it.

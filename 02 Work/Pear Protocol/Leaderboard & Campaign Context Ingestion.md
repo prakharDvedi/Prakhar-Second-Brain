@@ -89,3 +89,28 @@ Verified against live GitHub state. All 8 stacked scaffolds above were closed th
 - **#665** — `feat(charts): entry/TP/SL level annotations on position-aware charts` — opened same day, base `development`, open. Possibly related to the trade-idea annotation behavior noted above, not confirmed as the same initiative.
 
 Status as of this check: leaderboard axis in progress under #659/#660; campaign axis not yet restarted.
+
+## Update — 2026-09-01 — leaderboard axis: read stack + TG command landed on #659
+
+Leaderboard axis (Story #644) progressed. All merged into `feat/leaderboard-read-tool` (PR **#659**, still open to `development`, in review):
+
+- **read_leaderboard tool + cached read client + deterministic composer pre-fetch** — the agent answers live-standings questions by pre-fetching the board and injecting it as context (removes the model's discretion, which it dropped once history held a prior "unavailable" reply). Confirmed the composer plug-in point predicted on 2026-08-31 (`buildExtraTools`) was the actual seam used.
+- **TG `/leaderboard` command** (PR **#675**, merged `ba61ddd4`) — current weekly Orchard board, per venue (Hyperliquid / Lighter), with an inline venue toggle. Works as slash command AND natural-language chat. Added to the DM wallet-gate allowlist so unlinked users can see standings (the board is public). *(Originally volume-ranked; default changed to ROI same day — see the Metric correction below.)*
+- **Read-stack review fixes** (commit `35d28ffb`) — non-active venue returns an explicit "not in this week" state (not an empty board); custom date ranges include unlinked-X (platform stats); single-venue-week no-merge documented; `sortBy` default is scope-aware.
+
+### Eligibility decision (senior call — resolves an MVP open question)
+
+The FE runs **two** leaderboard reads with opposite eligibility:
+- `use-weekly-leaderboard.ts` → `includeUnlinkedX: false` — linked-X only, the weekly campaign board.
+- `use-trading-competition.ts` → `includeUnlinkedX: true` — everyone, volume-only draw.
+
+The agent mirrors the **weekly** board (`currentWeeklyLeaderboard` hard-codes `includeUnlinkedX: false`). Senior (GPSxtreme) confirmed weekly params are fine and **no separate global/competition board is needed**. So the all-accounts competition board is deliberately NOT wired into the agent — out of scope by decision.
+
+### Metric correction — default is ROI (huf, later same day)
+
+Second senior (huf, business) clarified the **competition week is judged on ROI**, so the board leads with ROI, not volume. Refines the metric only — eligibility (weekly, linked-X) is unchanged.
+
+- Flipped both defaults to ROI (commit `629e48a8`): `currentWeeklyLeaderboard` defaults `sortBy` to `roi` (NL composer pre-fetch inherits it); the `/leaderboard` command fetches ROI.
+- TG card made metric-aware (was volume-hardcoded) — header "Ranked by <metric>", rows show the ranked metric (ROI %, "—" for unmeasured ROI). Backend already supports all sorts, so this was a default change, not new capability.
+
+Status: leaderboard axis feature-complete on #659 (ROI default), awaiting review + merge to `development`. Campaign axis (Story #645) still unstarted.

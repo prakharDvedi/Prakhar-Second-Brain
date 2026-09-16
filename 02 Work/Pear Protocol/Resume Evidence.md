@@ -299,6 +299,8 @@ Marked **Derived**: the individual facts (which files/PRs touched what) are each
 ### Confidence
 Medium — breadth claim is derived across multiple confirmed PRs, not a single stated outcome
 
+**Update (2026-09-10):** User-stated business outcome — Lighter integration behind over $63M in trading volume in the month since launch. Not independently re-derived from a dashboard/export in this vault; treat as user-reported pending a linked metrics source.
+
 ---
 
 ## Live-verified every emergency model swap before merging
@@ -325,3 +327,31 @@ Operational discipline under repeated pressure — the same verification rigor a
 
 ### Confidence
 High
+
+---
+
+## Root-caused and hotfixed a prod config fan-out that silently nulled basket stats
+
+**Date:** 2026-09-02
+**PR(s):** #677 (→ `main`), #678 (→ `development`)
+
+### Problem
+A production `MadeBaskets` cron kept raising a `No baskets generated` alert while retrying, but baskets were in fact being generated. One `context` env var (`STATS_BASE_URL`) fed two consumers on two different services — `GET /categories` (categories service) and `QuantService.getBasketStats()` → `POST /stats/basket` (Rust stats service) — and an earlier change repointed both onto the categories host, so `/stats/basket` 404'd and basket stat columns persisted null.
+
+### What I actually did
+Root-caused it to the shared-var fan-out (the alert named a failure that wasn't happening), confirmed the two routes live on different services with live probes (`GET /categories` 200 vs 404; `POST /stats/basket` 201 vs 404), then split the config into `CATEGORIES_BASE_URL` and `STATS_BASE_URL`, renamed the categories-only consumer's var, and hardened both to `z.url()`. Shipped as an emergency hotfix to `main`, then backported to `development` to re-level the branches. Verified prod Railway vars and deploy health via CLI without reading any secret values.
+
+### Confirmed outcome
+`tsc` clean both apps; tokenomist-index spec green; both prod services redeployed SUCCESS with the new vars present; 8/8 prod services Online. Forward-only — already-nulled rows are not backfilled.
+
+### Technical significance
+Production reliability + end-to-end ownership: took a misleading alert, found the real layer, and shipped + deployed + verified across code, prod config, and deploy under hotfix pressure — while respecting a no-read-secrets boundary throughout.
+
+### Evidence
+- Incident: [[One Service URL Fed Two Different Services, Nulling Basket Stats]]
+- Work history: [[My Work at Pear Protocol#2026-09-02 — One service URL fed two different services, nulling two-sided basket stats]]
+- Daily log: [[2nd Sep 2026]]
+- Lesson: [[Engineering Lessons#One config value shared by two consumers on different services is a hidden fan-out]]
+
+### Confidence
+High (evidence + prod deploy); backport #678 still open
