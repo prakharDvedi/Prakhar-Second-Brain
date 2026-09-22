@@ -355,3 +355,31 @@ Production reliability + end-to-end ownership: took a misleading alert, found th
 
 ### Confidence
 High (evidence + prod deploy); backport #678 still open
+
+---
+
+## Fixed a live production cron-collision, then caught a second live bug by not trusting a code-review pass alone
+
+**Date:** 2026-09-19
+**PR(s):** #803 (merged), #804 (open), issues #754/#755/#769 closed, #806 filed
+
+### Problem
+A code review had already named the exact risk in writing three days before the affected PRs merged anyway: `apps/context`'s Hetzner one-shot CLI flags booted the full `AppModule`, which also registers `ScheduleModule` — so any *other* `@Cron` job in the app stayed live for as long as the one-shot process ran. It manifested for real on the first dry run against merged `development`: an `--oi-once` run let an unrelated Twitter-labeling cron fire mid-run, which then collided with Railway's own regularly-scheduled instance of the same cron a minute later — real LLM calls, DB writes, and Discord posts, none of them the job that was actually requested.
+
+### What I actually did
+Scoped every affected one-shot (4 in `apps/context`, 3 in `apps/indexing`) to a minimal per-job Nest module instead of the full app module, mirroring an already-proven sibling pattern (`BasketRunnerModule`). Rather than trust the fix from code review alone, live-tested all 7 on the real Hetzner box before merging — which surfaced a second, unrelated bug: `DiscordListenerService` never closed its `discord.js` gateway connection, hanging two of the one-shots after they'd already logged success. Fixed that in the same PR, then live-tested all 12 one-shots across all three apps (`apps/context`, `apps/indexing`, `apps/agent`) end to end, including a DB-level check that a purge job's deletions didn't touch an unrelated table it wasn't supposed to touch. Also found and committed a real CI deploy workflow that had been sitting untracked directly on the production box for an unknown period, verified it against actual repo/host state before merging it in, rather than assuming a found file is safe to trust as-is.
+
+### Confirmed outcome
+PR #803 merged into `development`; both root-caused bugs fixed and independently re-verified live post-fix (clean process exit, correct output, no side-fired jobs, DB row counts unchanged, idempotent re-runs). Closed 3 GitHub issues with an honest accounting of which of their own checklist items were and weren't independently verified, rather than closing them as fully complete by default. Filed a new issue (#806) for an unrelated bug found via the same testing pass, with the exact log-line evidence proving it happened, not just a suspicion.
+
+### Technical significance
+Root-caused from a paper trail (a 3-day-old review comment nobody acted on) to a live incident to a merged fix, without stopping at "the review already said what's wrong" — actually reproducing and root-causing it live. The discipline that mattered most: not declaring done after the first fix worked, live-testing surfaced a second real bug the code review missed entirely, and the closeout was honest about partial verification rather than rounding up to "done."
+
+### Evidence
+- Incident: [[Incidents & Investigations/Hetzner One-Shot's Full AppModule Boot Fired an Unrelated Cron, Colliding With Railway]]
+- Status tracker: [[Harness Integration/Step 3 — Tokenomist + OI Canaries on Hetzner]]
+- Daily log: [[19th Sep 2026]]
+- Lesson: [[Engineering Lessons#A framework's graceful-shutdown only tears down what it manages]]
+
+### Confidence
+High — direct evidence from live testing on the real box, not simulated or assumed; the remaining Twitter row-lock gap and #806 are both honestly recorded as still-open, not glossed over.

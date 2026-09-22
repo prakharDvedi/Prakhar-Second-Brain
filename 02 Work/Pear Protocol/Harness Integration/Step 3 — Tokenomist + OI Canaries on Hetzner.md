@@ -151,3 +151,21 @@ A code review of PR #757 and PR #758 (reviewer: GPSxtreme) found that the `redis
 PR #786 (Claude basket generation, [[Harness Integration/Step 2 — Claude Basket Generation on Hetzner]]) received the same review pass — 4 P2 correctness findings, a `tsc --noEmit` validation-claim correction, 3 needs-validation security leads, and a noted merge conflict with #757 in `apps/context/src/main.ts`. Not yet worked on; tracked in Step 2, not here.
 
 **Handoff correction:** item 1 above (#751 cut-over gated only on PR #757 merging) understated the gate — merging either PR before this session's fix would have shipped a job that still can't exit cleanly under systemd. That specific risk is now closed for both PRs; the second P1 in each (above) is a separate, still-open gate before either should merge.
+
+## Update — 2026-09-19 (predicted risk confirmed live: an OI one-shot fired an unrelated production Twitter cron, colliding with Railway)
+
+**Correction to the line above:** "before either should merge" did not hold — PR #757 and PR #758 both merged into `development` on 2026-09-18 with the second P1 (full-`AppModule` boot exposing unrelated scheduled writers) still unfixed.
+
+First dry runs against current `development` (post `#757`/`#758`/`#800`) confirmed that flagged risk live, with real production side effects: `--tokenomist-once` ran correctly (136/136 in 111.4s) but then hung 26+ minutes needing a manual kill; `--oi-once` ran correctly (188/188) but ~1 minute in, `TwitterCronService` fired on its own unrelated schedule, ran a full LLM-labeling batch, wrote real rows, and posted to Discord — then Railway's own regularly-scheduled instance of the same cron collided with it a minute later (`stored: 0, failed: 10` on the same batch, confirmed via a Discord screenshot). Root-caused to two compounding issues, the flagged `AppModule`-scope leak plus a previously-unknown, unrelated gap: `TwitterCollectorService.getPendingContent()` has no per-item claim/lock, so two concurrent runs can double-fetch the same pending rows.
+
+Further `apps/context`/`apps/indexing` one-shot dry runs paused pending a real fix (scope the one-shot to a dedicated module per job, matching `apps/agent`'s already-proven pattern) and a separate fix to add row-level locking to the Twitter pending-queue read. Full writeup: [[Incidents & Investigations/Hetzner One-Shot's Full AppModule Boot Fired an Unrelated Cron, Colliding With Railway]].
+
+## Update — 2026-09-19, later same day (fix shipped, all 12 jobs live-tested, systemd fully installed)
+
+The scoping fix landed: PR #803, merged into `development`. Every `apps/context`/`apps/indexing` one-shot now boots a minimal per-job runner module — full detail and the second bug found mid-validation (a `DiscordListenerService` hang) are in the incident note's own Update section, not repeated here.
+
+**#754 (systemd units for the 3 indexing jobs) closed** — the unit/timer files already existed as repo templates; added the missing `README.md` + `indexing.env.example` (cherry-picked into PR #804, the same PR that adds a `deploy-hetzner.yml` CI workflow found sitting untracked directly on the box). **#755 (validate index one-shots) closed**, with a documented gap: didn't diff actual Redis cache keys before/after, didn't test `--asset-index-once` against a genuinely stale (not just recently-warmed) Coin/Tokenomist cache, didn't record cold-cache timing.
+
+**All 12 one-shots across `apps/context`, `apps/indexing`, and `apps/agent` are now installed on the box and live-tested working**, correct output, clean exit, confirmed via real runs, not just code review. Only `context-baskets.timer` is enabled; the other 11 sit disabled, cutover for any of them is now a pure flip (Railway kill-switch + `systemctl enable --now`), not attempted this session.
+
+New bug found and filed separately (not part of this Story's scope, a different service): **#806**, `CoinIndexService`'s eager startup refresh can silently swallow `--coin-index-once`'s forced-refresh request under a timing race. Root cause #2 from the original incident (`TwitterCollectorService`'s missing per-row claim) remains genuinely unfixed.

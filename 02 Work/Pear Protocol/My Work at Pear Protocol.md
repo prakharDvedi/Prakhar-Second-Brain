@@ -302,6 +302,19 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 
 ---
 
+### 2026-09-18 — Resolved the Hetzner basket-migration merge conflict, root-caused a stale 3-hour bottleneck, did the first real production install *(outcome pending tonight's run)*
+**Status:** Code shipped and merged (PRs #786, #796); GitHub issues reconciled; production systemd install done and armed. The one thing NOT yet confirmed: the Hetzner timer's first real fire (14:00 UTC today) and a post-run DB check — this entry documents work done, not a proven-in-production outcome.
+
+- **Resolved PR #786's merge conflict.** #725 (kill-switch) merged into `development` first, which put #786 (`feat/basket-hetzner-migration`, Story #718) into `CONFLICTING` — both branches had edited the same lines of `refreshDaily` independently. Resolved additively (kept both the kill-switch guard and the `--baskets-once` signature change), verified `tsc --noEmit` clean + full context suite (15/15 suites, 98/98 tests) before pushing. PR flipped to `MERGEABLE`/`CLEAN`; merged same day.
+- **Root-caused and fixed a stale performance-bottleneck comment.** A real dry-run log gave concrete per-basket timing (category ~116s + research ~247s + selection ~20s ≈ 383s), consistent with the user's flagged ~3-hour full-run estimate. The code ran 3 platforms sequentially, citing a shared-budget comment that predated the concurrency-safe cache it claimed still applied (confirmed via an investigation pass: no shared budget tracker, no lock, the cache is explicitly Promise-memoized for concurrent callers). Changed the 3 sequential loops to `Promise.all` (PR #796), same verification bar, merged same day. Expected ~3h → ~1h wall-clock — not yet observed on a real run.
+- **First real production systemd install on the Hetzner box.** With explicit user-granted SSH access, synced the box to the merged `development` HEAD, rebuilt, and confirmed the build was genuine (turbo cache miss, not a replay). The checked-in unit template assumed a generic user/paths that don't match this box — wrote a corrected `context-baskets.service` with the real user, paths, and a live-derived absolute node binary path (systemd's minimal PATH has no nvm shims, so `env node` would have failed silently at 14:00 UTC with nobody watching). Installed and enabled the timer; confirmed via `systemctl list-timers` this is genuinely its first activation, not a re-enable.
+- **Found the env file backing this job is already shared infrastructure.** `.env.basket-development` — despite its name — is also the `EnvironmentFile=` for two other already-installed jobs (OI and tokenomist canaries) from an earlier work phase. Flagged the misleading name and a safe rename, deferred pending go-ahead rather than renaming unprompted mid-task.
+- **Reconciled the GitHub issue tracker against real evidence**, not memory: closed #731 (fixed back on 2026-09-10, never auto-closed) and #723 (validated in earlier sessions, confirmed by the user after an initial overclaim in a draft closing comment was caught and corrected before sending). Left #724/#718/#717 open, correctly — the Railway kill-switch flag is still unset, so cutover isn't actually done yet.
+
+**Evidence:** PR #786 (merge commit `b4b2714c` on the resolving branch, `gh pr view` state), PR #796 (`9138a07f`/`23a14602`, merged `e46d372a`), live SSH session output from `ap-tg-fallback` (`systemctl list-timers`, `systemctl cat context-baskets.service`), issues #731/#723/#719–722/#724 GitHub state.
+
+---
+
 ## Recurring Engineering Themes
 
 Only themes with independent support across multiple, separately-dated pieces of work.

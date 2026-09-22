@@ -314,6 +314,8 @@ Calling a framework's own `close()`/shutdown method will clean up the providers 
 
 **Evidence:** [[Harness Integration/Step 3 — Tokenomist + OI Canaries on Hetzner]]
 
+**Update — 2026-09-19:** A third confirmed instance, `DiscordListenerService` opened a persistent `discord.js` gateway `Client` in `onModuleInit()` with no teardown, hanging `--watched-accounts-once`/`--twitter-ingestion-once` after logging completion. This one had a cleaner fix than the raw-Redis cases: since it was already a real `@Injectable()` managed by Nest's DI (not a bare factory-provided client), the fix was implementing `OnModuleDestroy` on the class itself and letting Nest's own shutdown sequence call it — no manual `finally`-block quit needed in the entrypoint. Refines the lesson: check whether the leaking resource lives on a real DI-managed provider first (give it a lifecycle hook) before reaching for the manual-cleanup-in-main.ts pattern, which should be the fallback for genuinely raw/external clients only. See [[Incidents & Investigations/Hetzner One-Shot's Full AppModule Boot Fired an Unrelated Cron, Colliding With Railway#Update — 2026-09-19 (root cause #1 fixed and merged; root cause #2 still open)]].
+
 ---
 
 ### Silence after switching branches on a remote box can mean the wrong code is running, not a hang
@@ -361,3 +363,75 @@ A model that scores better in a blind quality judge can still produce no better 
 **Why it matters:** Evaluate the artifact the system actually acts on (the fired trigger), not the raw model output. Judge scores on pre-pipeline text can overstate a model's real-world value when a downstream stage normalizes it away.
 
 **Evidence:** [[Harness Integration/Step 7 — Claude CLI Feasibility Research for interest-distiller#Update — 2026-09-16 (spike run + results + decision)]]
+
+---
+
+### Tool-emitted safety metadata must survive LLM synthesis boundaries
+
+When an upstream tool emits a safety or reliability label, downstream LLM summaries need an explicit rule to preserve it verbatim in every output format, especially when compressing multiple candidates into one recommendation.
+
+**Context:** CoinGecko tools correctly emitted Pear tradability tags, but the market scanner could drop a tag while compressing a multi-asset scan into one decisive pick. The composer then built an executable trade card for an asset that was not tradeable on Pear. The fix was a prompt rule requiring the tag to remain attached through tables, prose, and single-asset recommendations; the evidence did not support a deterministic composer guard.
+
+**Why it matters:** A safety-critical label can be correct at the source and still be absent at the action boundary. Review the full transformation path and explicitly carry decision-critical metadata across model rewrites; a prompt-level rule can be the right scoped fix when the failure is a rare synthesis omission rather than a deterministic pipeline defect.
+
+**Evidence:** PR #794, commit `3691e06a`, `apps/agent/src/ai/agents/market-scanner/prompt.ts`.
+
+---
+
+### A "done on purpose" comment is a claim about the code when it was written, not a fact about the code now
+
+A comment justifying a design choice (sequential execution, a lock, a cap) can quietly outlive the reason it gave. Later code changes can remove the real constraint while the comment — and the behavior it justifies — stay untouched, because nothing forces a comment to be re-verified when the code around it changes.
+
+**Context:** `MadeBasketsCronService.refreshDaily` ran 3 platforms sequentially with the comment "Sequential on purpose — the runs share the LLM + stats API budget." Git blame put that comment at June 2026, before `categoryAnalysisCache` existed. By September the cache had been rebuilt specifically to be concurrency-safe (memoizes the in-flight Promise, not the resolved value) and the budget cap had become a per-subprocess CLI flag, not an in-process tracker — the comment's stated reason was gone, but the sequential loop (and the ~3-hour full run it produced) remained.
+
+**Why it matters:** Before trusting a "this must stay X because Y" comment as a hard constraint, check whether Y still holds against the *current* code — grep the actual shared resource it names, check who else touches it, check git blame for when the comment was written vs. when the resource last changed shape. Treat the comment as a historical claim to verify, not a fact to inherit.
+
+**Evidence:** [[Harness Integration/Step 2 — Claude Basket Generation on Hetzner#Update — 2026-09-18 (part 2): #786 conflict resolved + merged, #796 concurrency fix shipped, first real Hetzner install|Step 2 §2026-09-18 update]], PR #796.
+
+---
+
+### A one-shot that boots the full app isn't scoped to one job — and an unlocked write path turns a coincidence into a collision
+
+A CLI one-shot that reuses the app's full module (`NestFactory.createApplicationContext(AppModule, ...)`) instead of a dedicated minimal module doesn't just need the whole app's env — it's also subject to every other scheduled job that module registers, for as long as the process stays alive. If a downstream write path has no per-item claim/lock, two callers hitting it in the same window (an accidental extra invocation + the regular scheduled one) can double-process the same rows.
+
+**Context:** A code review had already named this exact risk in writing three days before the affected PRs merged anyway ("can trigger unrelated scheduled writers outside the one job's own flock"). It manifested on the first real dry run against the merged code: an OI one-shot's full-`AppModule` boot let an unrelated Twitter-labeling cron fire mid-run, and because the Twitter pending-queue read (`getPendingContent()`) had no row-level lock, Railway's own regularly-scheduled instance of the same cron collided with it a minute later — real LLM calls, real DB writes, real Discord posts, none of them the job that was actually requested.
+
+**Why it matters:** A one-shot's isolation claim is only as strong as its module boundary. If it boots the full app module, "I only asked for job X" is not true — check what else that module schedules before treating a manual/delayed invocation as safe. Separately, any queue-style read-then-write (`findMany` on an unprocessed-flag, then mark-as-processed later) needs an atomic claim if more than one process could ever call it concurrently — "this only runs once, on a schedule" is an assumption, not a guarantee enforced by the code.
+
+---
+
+### Pinning a script's own tool invocation by absolute path doesn't pin the environment its nested subprocesses inherit
+
+A deploy/automation script that calls its main tool (`$PNPM_BIN`, `$NODE_BIN`) by absolute path looks environment-independent, but if that tool's own scripts shell out again internally (a `package.json` script running a bare `pnpm`), those nested calls resolve via whatever `PATH` the process actually has — which a non-interactive SSH session never gets populated for, since it skips the profile that normally sets it up (e.g. `nvm`'s shell init).
+
+**Context:** The new Hetzner CI deploy workflow's `scripts/hetzner/deploy.sh` invoked `$PNPM_BIN run railway:prisma:generate` by absolute nvm path — but that script runs `pnpm -C packages/database run generate:all` internally as a bare `pnpm`. First real CI run failed with `sh: 1: pnpm: not found`, because the SSH session's plain `PATH` had a stale system Node v18 and no `pnpm` at all. A near-identical bug hit one step earlier in the same script: `mkdir -p /run/agent-pear` as plain `prakh` failed with `Permission denied` because `/run` is root-owned tmpfs and the script never used the `sudo` that was actually available.
+
+**Why it matters:** Before trusting a script "because it uses absolute paths," check every place it calls back into itself indirectly (nested npm/pnpm scripts, subshells) — those calls don't inherit the absolute-path discipline unless the directory holding those binaries is explicitly exported onto `PATH`. And "works when I run it manually" isn't evidence it'll work under CI/SSH — an interactive shell sources profile files a non-interactive one skips; test the actual invocation context, not a hand-run approximation of it.
+
+**Evidence:** PR #809, PR #810, [[Daily Work Logs/19th Sep 2026#Update — same day, third session: PR #804 finished, CI deploy actually ran, two real bugs found and fixed|19th Sep 2026 update]].
+
+---
+
+### A write-only secret can't be debugged by re-reading it — only by a live functional test
+
+Secret stores (GitHub Actions secrets, most others) intentionally never let you read back a stored value — only overwrite it. If the value got corrupted between the source and the store (a copy-paste through a browser converting line endings, a partial paste), the only signal is the consumer failing downstream, and there's no way to inspect what's actually stored to confirm the fix worked before trying again.
+
+**Context:** A dedicated SSH deploy key's private half was generated cleanly, but the value that ended up in the GitHub environment secret failed to parse (`error in libcrypto`) — almost certainly mangled during a Windows copy-paste into the browser. Because the secret is write-only, there was no way to confirm or deny corruption by looking at what GitHub had stored; the only real fix was regenerating the key and verifying the *new* file with a live `ssh` auth test before handing it off to be pasted again.
+
+**Why it matters:** Treat any write-only credential store the same way: verify the source file parses/works *before* it goes in (`ssh-keygen -y -f key`, a live auth attempt), and if a downstream consumer fails after a paste, don't assume the paste was faithful — regenerate and re-verify from a clean source rather than trying to diagnose a value you can't see.
+
+**Evidence:** [[Daily Work Logs/19th Sep 2026#Update — same day, third session: PR #804 finished, CI deploy actually ran, two real bugs found and fixed|19th Sep 2026 update]].
+
+**Evidence:** [[Incidents & Investigations/Hetzner One-Shot's Full AppModule Boot Fired an Unrelated Cron, Colliding With Railway]]
+
+---
+
+### Output deduplication cannot create diversity after upstream inputs become identical
+
+An output-level deduplication guard can prevent exact repeats without producing genuinely different results. If an upstream research or selection stage receives the same prompt and state for every attempt, it can keep returning the same anchors; later stages can only reshuffle them.
+
+**Context:** The Claude two-stage basket runner stripped `avoidBaskets` from the research prompt because the naming/distinctness block was considered noise for survivor generation. After category analysis was memoized, attempts in a run received identical research inputs and repeatedly surfaced the same anchors (`DOGE`/`AMD`/`GALA`), producing near-identical basket themes. The OpenRouter path retained `avoidBaskets` and did not show the same collapse. PR #811 restores the signal and adds a research-scoped diversity instruction; the behavioral improvement still needs a live multi-basket run.
+
+**Why it matters:** When a system promises variety, inspect where variation is introduced. A final deduplication check is not a substitute for upstream state that changes the candidate set. Preserve novelty signals at the stage where candidates are generated, then keep downstream deduplication as a safety backstop.
+
+**Evidence:** PR #811, commit `b00eeb45`, [[Daily Work Logs/19th Sep 2026#Basket research diversity regression — PR #811 (open, not live-verified)]], [[Harness Integration/Step 2 — Claude Basket Generation on Hetzner#Update — 2026-09-19 (PR #811: research-stage diversity regression)]].
