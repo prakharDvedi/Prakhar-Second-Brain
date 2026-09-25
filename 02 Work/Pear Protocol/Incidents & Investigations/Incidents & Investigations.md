@@ -21,7 +21,8 @@ Navigation only — open the note for the full write-up.
 - [[Ambiguous HIP-3 Symbol Crashed the Whole Reply, Repeatedly]] — a dual-listed ticker crashed replies at multiple call sites, recurring 13x in 3 days. Resolved.
 - [[Internal-Leak Guard Blocked Legitimate AI-Industry Reporting]] — the leak-detection guard blocked legitimate AI-industry news. Resolved, ongoing tuning surface.
 - [[Kalshi Odds Query Fell Into a Planner Routing Dead Zone With No Empty-Plan Fallback]] — a Kalshi "odds" query hit a node trigger-text conflict (research includes macro, excludes live price; marketScanner doesn't cover Kalshi either) and the planner emitted an all-null decision nothing downstream caught. Diagnosed, not confirmed resolved — no fix implemented.
-- [[BNB-AVAX Pair Orientation Was Lost at the Agent Boundary]] — canonical pair-stat orientation was flattened into prose; the pair LLM later invented an inverse-sign transformation, while a separate frontend display path can also mix requested labels with canonical scores. Diagnosed; no production fix implemented.
+- [[Generic US-Stock Picks Refused as Crypto-Only, Then Reported as a Data Outage]] — the planner judged "what stocks to long/short" out of scope (crypto-only) and emitted an empty plan; the composer told the user data was unavailable. Deterministic under a long execution-flow history, a fluke otherwise. Fix in review (PR #986, not merged).
+- [[BNB-AVAX Pair Orientation Was Lost at the Agent Boundary]] — canonical pair-stat orientation was flattened into prose; the pair LLM later invented an inverse-sign transformation, while a separate frontend display path can also mix requested labels with canonical scores. Diagnosed; no production fix implemented. (Update 2026-09-24: partly fixed by agent-pear-v2 #905 and #947; #801 still open, #807 closed unmerged — see the Update section in the note.)
 
 ## Telegram
 

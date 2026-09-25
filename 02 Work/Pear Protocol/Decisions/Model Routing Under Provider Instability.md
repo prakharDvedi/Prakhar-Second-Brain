@@ -35,3 +35,5 @@ This produced several same-week reversals (Luna was the emergency replacement fo
 ## Later Evidence
 
 Flash Lite bakeoff 1/1; Luna 8/8 concurrent burst with no 429s; Gemini advanced-mode smoke test ~5.4s with streamed reasoning — each cited at the time of its own swap.
+
+2026-09-25: the composer fallback was moved from a same-key Cerebras fallback to a cross-provider one (OpenRouter), because a same-key fallback shares the rate-limit bucket that rejected the primary. It was live-verified with injected 429s before being considered done (PR #923, still open) — see [[25th Sep 2026]]. *(Correction: #923 had already merged to `development` on 2026-09-24, merge `cda91b87`; not yet in `main`.)*

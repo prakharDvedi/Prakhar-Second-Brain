@@ -50,6 +50,18 @@ Causality was not proven by live reproduction. It was not verified, by re-invoki
 
 None implemented this session — read-only investigation only. No PR opened.
 
+## Update — 2026-09-25 (new evidence: the empty-plan state recurs)
+
+A second, unrelated query class hit the same all-null plan (`generalChat: false`, `clarify: null`): generic US-stock pick asks judged crypto-only. See [[Generic US-Stock Picks Refused as Crypto-Only, Then Reported as a Data Outage]]. With no findings, the composer described the empty plan to the user as a data outage ("unable to retrieve… try again later").
+
+This partly answers the "one-off vs systematic" unknown above, for the empty-plan state in general rather than for the Kalshi case specifically:
+- Planner-only probes (Cerebras gpt-oss-120b; main prompt and fixed prompt pooled, 18 samples each; some early samples may have fallen back to Haiku) mostly returned an all-null plan for off-topic asks, although the planner prompt routes those to generalChat:
+  - "write me an essay on the history of the stock market": 14 empty, 3 clarify, 1 correct
+  - "calculate the CAPM beta for my finance homework": 12 empty, 4 clarify, 2 correct
+- The DAG contract gap is unchanged: still no empty-plan fallback on web/TG. PR #986 fixed only the stock-routing trigger, not this gap.
+
+Still not re-verified for the Kalshi query itself.
+
 ## Related Work
 
 [[11th Sep 2026]]

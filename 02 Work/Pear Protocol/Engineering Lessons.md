@@ -364,6 +364,8 @@ A model that scores better in a blind quality judge can still produce no better 
 
 **Evidence:** [[Harness Integration/Step 7 — Claude CLI Feasibility Research for interest-distiller#Update — 2026-09-16 (spike run + results + decision)]]
 
+**Update — 2026-09-24:** the lesson holds, but the cause in this case was upstream too. A follow-up run showed the production prompt's examples (including a ratio example) were what steered Opus into ratio wording in the first place: with a loose prompt, only 2% of Opus's triggers were templated, against 46% before. So check whether the pipeline discards the model's edge, and also whether your own prompt is pushing the model into the form the pipeline discards. See [[Harness Integration/Step 7 — Claude CLI Feasibility Research for interest-distiller#Update — 2026-09-23 (trigger-only neutral judge + Notion write-up)]].
+
 ---
 
 ### Tool-emitted safety metadata must survive LLM synthesis boundaries
@@ -435,3 +437,65 @@ An output-level deduplication guard can prevent exact repeats without producing 
 **Why it matters:** When a system promises variety, inspect where variation is introduced. A final deduplication check is not a substitute for upstream state that changes the candidate set. Preserve novelty signals at the stage where candidates are generated, then keep downstream deduplication as a safety backstop.
 
 **Evidence:** PR #811, commit `b00eeb45`, [[Daily Work Logs/19th Sep 2026#Basket research diversity regression — PR #811 (open, not live-verified)]], [[Harness Integration/Step 2 — Claude Basket Generation on Hetzner#Update — 2026-09-19 (PR #811: research-stage diversity regression)]].
+
+---
+
+### A strict, example-heavy prompt can help a small model and cap a strong one
+
+The same prompt change can move two models in opposite directions. A detailed recipe with Good/Bad examples keeps a small model in line, but a stronger model copies the template instead of using its judgment.
+
+**Context:** interest-distiller watch triggers, same 25 users and evidence, prompt and model varied separately. Removing the recipe and examples (keeping only the constraints the pipeline enforces) made Opus's triggers win 24-0 with two neutral judges, and cut its boilerplate from 39% to 5%. The same loose prompt made Cerebras `gpt-oss-120b` worse: trading-style tag leaks went from 1% to 14%, and its triggers shrank to bare one-liners.
+
+**Why it matters:** When you compare models on one shared prompt, you're partly measuring how well each model fits that prompt. Before concluding a stronger model "isn't much better", test it on a prompt written for it. And don't loosen a prompt across the board: keep the scaffolding for the small model, and give the strong model only the hard constraints plus a goal.
+
+**Evidence:** [[Harness Integration/Step 7 — Claude CLI Feasibility Research for interest-distiller#Update — 2026-09-23 (trigger-only neutral judge + Notion write-up)]], [[Daily Work Logs/24th Sep 2026]], branch `spike/interest-distiller-loose-prompt`.
+
+**Update — 2026-09-24:** the loose prompt wasn't the end state. Adding back four targeted rules — one per measured weak spot (one subject per statement, explicit numbers, follow stated preferences, no absolute levels), still no examples or recipe — beat the loose prompt 21-3 / 22-2 and cut multi-asset triggers 34% → 4%, without re-templating (0% discarded before Elfa). So the pattern for a strong model is: hard constraints + goal, run it, then add a rule for each concrete failure you measured — rules, not examples. Cost: some variety (distinct shapes 100% → 82%). See [[Harness Integration/Step 7 — Claude CLI Feasibility Research for interest-distiller#Update — 2026-09-24 (middle-ground prompt results)]].
+
+---
+
+### Hand-check a regex metric's hits before reporting it
+
+A deterministic check is only as good as its pattern, and a pattern written for one arm's output can misfire on another's.
+
+**Context:** the interest-distiller A/B counted "absolute price level" triggers with a regex. The middle-ground prompt explicitly banned absolute levels, yet the metric reported 61.5% for it. Reading the hits showed it matched dollar liquidation sizes ("$2M of LIT long liquidations") and backtracked into funding thresholds ("above 0.04%") — conditions the new prompt produced far more of. Hand count: 2.8%. The same bug had inflated the previous run's 18% figure for the loose prompt, which was already in the write-up.
+
+**Why it matters:** when a metric contradicts what the prompt says (or moves sharply between arms), read the matches before interpreting it. Arms that change *what kind* of text is produced also change what a regex catches, so a comparison can flip on a false-positive rate rather than on the real property.
+
+**Evidence:** [[Harness Integration/Step 7 — Claude CLI Feasibility Research for interest-distiller#Update — 2026-09-24 (middle-ground prompt results)]], `ABS_LEVEL` in `apps/agent/src/scripts/interest-distiller-quality-ab.ts` on branch `spike/interest-distiller-loose-prompt`.
+
+**Also (2026-09-25):** the advanced-mode grounding check's number regex in #991 read the JSON array `[3100,3200]` as one number and skipped the figure after `"64,000, "`. The spec passed because its fixtures didn't contain either shape. Found by feeding it real tool-output shapes. See [[25th Sep 2026]].
+
+---
+
+### Test output-shrinking code against each tool's real return shape, not a hand-built object
+
+Code that compacts or summarizes tool output (truncation, digests, dedupe) encodes an assumption about what the output looks like. If the specs only use neat object fixtures, a tool that returns a formatted string or `JSON.stringify(...)` gets treated as one opaque string and silently loses data.
+
+**Context:** #987's advanced-mode compaction applied a per-field 1500-char string cap to the whole result. Its digest dropped any long single-line string. Every account read returns a JSON string and TA returns multi-line text, so `get_account`'s balance vanished from the digest and a 10-asset TA call kept only 3 assets. The specs all passed because they only used object rows with an `asset` key.
+
+**Why it matters:** the failure is silent. The model still gets a well-formed result, just with the numbers it needs for sizing missing, and it writes the answer anyway. Fixtures for this kind of code should be copied from what the real tools actually return.
+
+**Evidence:** [PR #987 review comment](https://github.com/pear-protocol/agent-pear-v2/pull/987#issuecomment-5820172069), fixes in [#991](https://github.com/pear-protocol/agent-pear-v2/pull/991) (open as of 2026-09-25), [[25th Sep 2026]].
+
+---
+
+### An eval harness with a silent model fallback measures a different model when the primary is overloaded
+
+If the code under test falls back to another model when the primary call fails, an eval run during a provider brownout quietly mixes two models' behaviour into one score. Nothing shows up as an error, because the fallback succeeded.
+
+**Context:** comparing two planner prompt wordings, 216 calls each, 12 in flight. Cerebras started failing and the planner fell back to `claude-haiku-4.5` through OpenRouter, which routes differently. One wording looked clearly worse (the Dutch probe went from 4/6 to 0/18, with identical answers repeated). Rerun with the model pinned (`modelOverride`, which disables the fallback), failures became visible errors (about half the calls). Among the successful calls the two wordings were statistically the same (90.3% vs 88.6%).
+
+**Why it matters:** a fallback that keeps production resilient makes an eval dishonest. For A/B runs, pin the model so failures show up as errors, count those errors, and compare only calls that succeeded. A sudden big swing on one variant during a noisy provider period is a sign to check which model actually answered. The fallback also costs money on a different provider.
+
+**Evidence:** [[Generic US-Stock Picks Refused as Crypto-Only, Then Reported as a Data Outage]], [[24th Sep 2026]].
+
+### A streaming fallback must trigger on "nothing emitted", not only on a thrown error
+
+With `ai@6` `streamText`, an error on a later step of a multi-step tool loop doesn't throw out of `textStream`. The SDK turns it into a stream error part, `textStream` just ends, and `usage` resolves from the earlier successful step. Code that only falls back inside a `catch` never sees the failure.
+
+**Context:** PR #923 moved the composer's fallback to a different provider and dropped primary retries. A Cerebras 429 on step 2 (after a tool call) still ended as "composer prose stream was empty", and the OpenRouter fallback was never called. Found by reading the SDK source. Confirmed by a unit test that fails on the old commit, and by a live trial with an injected 429 (failed 2/2 before the fix, recovered after).
+
+**Why it matters:** a fallback that looks right in a first-step failure test can be dead for the failures that actually happen under load. Rate limits are more likely on later steps, because each step resends the full prompt. When wrapping a streaming call with a fallback, key it on "no output was produced" and test a failure after a tool call, not just an initial rejection. Separately, a fallback on the same provider key shares the rate-limit bucket that just rejected the primary, so it can't help with a 429.
+
+**Evidence:** [[25th Sep 2026]], PR #923 commits `ae33a54c` (fix), `0faadd94` (test).

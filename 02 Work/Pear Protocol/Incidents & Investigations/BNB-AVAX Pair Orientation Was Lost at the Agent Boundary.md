@@ -206,3 +206,17 @@ Consumers should copy the canonical signed score with its canonical pair, or dis
 - Frontend issue `pear-protocol/frontend#907` was closed because it was opened in the wrong repository.
 - The related Sep 16 work-log finding about orientation-dependent pair statistics remains relevant: [[16th Sep 2026]].
 - This report is the durable record for the exact production trace and the corrected separation between the chat root cause and the separate frontend display risk.
+
+## Update — 2026-09-24: issue #801 / PR #807 status
+
+Verified with `gh` on 2026-09-24:
+
+- `pear-protocol/agent-pear-v2#801` ("preserve canonical pair z-score orientation through composer") tracks this incident. It is still **OPEN**.
+- PR `#807` (`fix/801-canonical-pair-orientation`, one commit `44d5a348`) was **closed without merging** on 2026-09-20. It had no reviews.
+- Most of #801 has since landed in other merged PRs:
+  - `#905`, merged 2026-09-23: normalizes the ALIGNED/AGAINST comparison, prints a rich/cheap reading per row, and adds a MIXED verdict when Z and rollZ disagree.
+  - `#947`, merged 2026-09-24: stops `toPairStat` from negating z when β<0 (commits `c89740fe` and `f623046d`).
+- Still open on `origin/main`: the composer gets only `f.pair.text` for pair context. There is no deterministic pair ground-truth block like trade execution's `toolCallAnalysis`.
+- Two problems with #807 as written:
+  - It was built before #947, so it still negates z when β<0.
+  - It takes the recommended direction from rollZ. The signal pipeline takes direction from the static z (`pair-selection.service.ts:83`) and rejects pairs where the two signs disagree.

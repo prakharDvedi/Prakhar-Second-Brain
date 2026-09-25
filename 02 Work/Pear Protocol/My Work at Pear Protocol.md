@@ -315,6 +315,18 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 
 ---
 
+### 2026-09-23 – 09-25 — Composer fallback moved off the rate-limited provider, plus a dead-fallback bug in the stream path
+**Status:** Merged to `development` 2026-09-24 20:47 UTC (PR #923, merge `cda91b87`); live in the dev env only. Not in `main`/prod yet. Recovery from a *real* Cerebras 429 hasn't been observed; only injected 429s were tested.
+
+- **Problem:** a Cerebras tokens-per-minute 429 on the composer surfaced as `Delay was aborted`. The SDK's retry backoff outlasted the 30s abort, then the fallback, which used the same model on the same Cerebras key, hit the same quota. The user got the generic error after 88s (trace `a5b982db36d1029bd46d7e8e71c4db26`).
+- **Fix (`df486dce`):** moved `composerFallback` to `openai/gpt-oss-120b` on OpenRouter (a different provider and quota, same model so prompt tuning holds). Primary calls run with `maxRetries: 0`, so a 429 goes straight to the fallback.
+- **Found and fixed a dead fallback path (`ae33a54c`):** in `ai@6` `streamText`, an error on a later step (after a tool call) doesn't throw. `textStream` just ends empty, so a 429 on step 2+ never reached the fallback. The stream now falls back whenever nothing was emitted. Also built the fallback through `resolveNodeModel`, so its own timeout/temperature config actually applies.
+- **Verification:** `composer/agent.spec.ts` (`0faadd94`), 4 tests on the real SDK with mock models; the step-2 test fails on `df486dce` and passes on the fix. A live trial against real Cerebras + OpenRouter with an injected 429 recovered in all 6 cases (worst 29.8s against a 30s per-tier budget; a ~90k-token prompt took 17.2s). The step-2 case failed 2/2 before the fix.
+
+**Evidence:** PR #923 (description has the trial table), commits `df486dce`, `ae33a54c`, `0faadd94`, merge `cda91b87`; [[25th Sep 2026]]; [[Engineering Lessons#A streaming fallback must trigger on "nothing emitted", not only on a thrown error]].
+
+---
+
 ## Recurring Engineering Themes
 
 Only themes with independent support across multiple, separately-dated pieces of work.

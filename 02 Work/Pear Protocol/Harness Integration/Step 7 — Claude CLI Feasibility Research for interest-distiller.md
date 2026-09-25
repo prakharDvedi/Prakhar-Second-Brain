@@ -73,3 +73,79 @@ Checked whether `pear-stat-rs` has shipped, since that's what the NO-GO is gated
   3. Also confirmed: the `eql` field stored alongside a pair-stat ghost (`{ conditions: candidate.entry.conditions }`) is the ordinary single-asset Elfa condition, not a structured ratio/z-score spec — there is currently no machine-checkable representation of "SP500/BTC ratio > 2σ" anywhere, only the free-text `statement`. `kindHint: "deterministic"` is consumed today only by `ghost-report.ts`'s fire-projection analytics, not by any evaluator.
 
 **Net: "revisit when the rail ships" undersold the gap.** Even a fully cut-over pear-stat-rs engine doesn't get opus's triggers firing by itself — there is no evaluator anywhere that polls or subscribes to pear-stat-rs and fires a pair-stat ghost/personal trigger. That's new code, not a config flip. See the reply given in-chat 2026-09-22 for the concrete pipeline-change list (structured condition capture at synthesis time, a stat-rail evaluator alongside `ghost-shadow`, un-gating the personal-watch template branch, a `DeterministicSignalCondition`-shaped measurement contract so `SignalDispatchService` composes it like an Elfa fire, and picking push (`stats_done` `pg_notify`) vs poll for the trigger cadence).
+
+## Update — 2026-09-22 (research-augmented variant considered and declined — reasoned, not measured)
+
+Asked in-chat whether harnessing Claude's live research (`WebSearch`/`WebFetch`, the made-baskets pattern) — instead of the plain tool-free structured-output call the spike actually tested — would change the NO-GO. No spike was run for this variant; this is a reasoned projection, not a measurement, and is recorded as such.
+
+**The case for it:** the spike's own tool-free run showed opus already writes better-tailored triggers than cerebras (real catalysts, concrete thresholds) but with a specific flaw the neutral judge penalized it for — "occasionally invents a theme." Live research is the natural fix for exactly that flaw (grounding, not a general quality lift).
+
+**Why it was declined anyway:**
+- Upside is narrow (closes a groundedness gap) not broad — doesn't change the tie-ish overall judge result into a clear win.
+- Cost/latency go materially worse, not marginally: made-baskets' research stage is the expensive/slow leg of its 3-Opus-call pipeline (~$2.18/basket all-in); interest-distiller runs per-active-user nightly with unbounded growth — reopens exactly the volume/sustainability risk Step 1 flagged and this spike deliberately avoided by testing a tool-free call.
+- Doesn't touch the separate, already-identified blocker: `isPairStatStatement` templates ratio/pair-stat wording away before Elfa regardless of how it was authored — research-grounded or not.
+
+**Decision (2026-09-22):** don't pursue the research-augmented variant. Marginal quality upside doesn't clear the cost/latency bar even before running the numbers. Extends, does not overturn, the 2026-09-16 NO-GO. If this is ever revisited, the cheap next step (not yet done) would be the same 10-20-user spike design with `CLAUDE_TOOLS=WebSearch,WebFetch` enabled, judged specifically on groundedness — but there's no current plan to run it.
+
+## Update — 2026-09-23 (loose-prompt A/B: prompt × model, run on Hetzner)
+
+Tested the senior-engineer hypothesis that the distiller prompt's strict recipe + Good/Bad examples make Claude formulaic. Branch `spike/interest-distiller-loose-prompt` (pushed, no PR), script `apps/agent/src/scripts/interest-distiller-quality-ab.ts`. Ran on Hetzner in an isolated clone (`/home/prakh/pear/spike-distiller`, prod checkout untouched), 25 users, read-only, model `claude-opus-5-5` via a spike-only CLI 2.1.280 (box global CLI 2.1.258 does not recognize `claude-opus-5-5`; its `opus` alias = `claude-opus-5`; global left untouched because made-baskets uses it). Arms: crb-legacy (prod), crb-loose, opus-legacy, opus-loose, opus-loose-web (WebSearch/WebFetch). Loose prompt = pipeline hard constraints only, no examples/recipe.
+
+Measured (n=25, one run, judge = grok-4.3 blind):
+- Opus: loose prompt cut "N% in a day" boilerplate 39%→5% and pair-stat templating 46%→2% (so far more authored wording survives to Elfa); legs shift from Bollinger/RSI to funding/liquidation/events. Judge opus-loose vs opus-legacy 14-10 overall (not significant).
+- Opus 5.5 vs prod Cerebras: legacy prompt 19-5 overall (sign test p≈0.007) — unlike Step 7's Opus-5 6-6 tie; loose 17-7. Cerebras still wins grounding (15-6 vs opus-loose).
+- Cerebras + loose prompt: style-tag leak 1%→14%, triggers shrink (avg 78→41 chars), events/technicals vanish. Judge's 15-9 preference for it is partly an artifact (it rewards style tags like pair-trading as "grounded").
+- Web arm: loses to opus-loose 6-18 overall, 3-20 grounding; +45% cost, +70% latency. Judge can't see research, so some grounding penalty is artifact, not all.
+- Cost/latency: opus ~$0.095/user, p50 ~10s; web $0.136, p50 17s (Max-plan equivalents).
+- Open: opus-loose puts >1 ticker in 37% of statements — unverified how Builder Chat/topic keying handles that. Absolute price levels 18% (loose) / 41% (web) — the legacy prompt banned trade-derived levels because they go stale.
+
+## Update — 2026-09-23 (trigger-only neutral judge + Notion write-up)
+
+Re-judged the saved 25-user outputs with triggers only (tags hidden), all 5 arms blind/shuffled per user, two neutral judges (x-ai/grok-4.7, openai/gpt-6-sol), 1-5 rubric (relevance/specificity/signal-to-noise/grounding/evaluable) + rank. One user had no triggers from any arm → excluded (24 users).
+- opus-loose beat opus-legacy AND prod crb-legacy **24-0 with both judges**. Prompt effect on Opus is decisive once triggers are judged alone (the earlier grok-4.3 whole-profile judge read 14-10).
+- opus-loose-web vs opus-loose: 13-11 / 10-14 → tie; web more specific, less grounded.
+- crb-loose vs crb-legacy: 13-11 / 17-7 → not significant; its 14% style-tag leak still rules it out.
+- opus-legacy ranks last: its ratio triggers score "not evaluable" (the rubric states the engine is single-asset — one pipeline fact given to the judges).
+- Judges agree 85.8% pairwise, same winner 19/24. Counter-example: user who asked for ">5% moves only" — crb-loose won; opus-loose decorated the request.
+- Next-run idea (not done): middle-ground Opus prompt (loose + one subject per trigger + explicit numbers + follow stated preferences + no stale levels).
+- Write-up (private Notion draft): [interest-distiller: loose prompt vs strict prompt](https://app.notion.com/p/3e44641ea90c811fa1bad8b323a23b77), child page with all triggers. Raw data: `/home/prakh/pear/spike-results/` on Hetzner.
+
+## Update — 2026-09-24 (web research dropped; middle-ground prompt run in progress)
+
+- **Decision (user, 2026-09-24): drop WebSearch/WebFetch for interest-distiller.** Now measured, not just reasoned (supersedes the 2026-09-22 reasoned-only decline): trigger-only judges called web vs plain loose a tie (13-11 / 10-14), both scored it less grounded (3.79 vs 4.21, 3.46 vs 4.42), at ~+45% cost and ~+70% latency. Caveat kept on record: the judges can't verify live facts, so web's upside may be slightly undercounted — revisit only for time-sensitive catalysts.
+- **Direction:** Opus + loose prompt, no tools. Note this reframes the 2026-09-16 "blocked on the pipeline / pear-stat-rs" NO-GO: that gating was largely the OLD prompt steering Opus into ratio wording (`opus-legacy` 46% templated); with the loose prompt only 2% is templated, so the rail is not a prerequisite for Opus's edge to reach Elfa. Cost/latency/ops concerns from 2026-09-16 still stand.
+- **In progress (not yet read):** middle-ground prompt = loose + one subject per statement, explicit numbers + windows, follow the user's stated alert preferences, no absolute price levels (targets the loose run's weak spots: 37% multi-asset statements, vague "funding extreme"-style conditions, the ">5% only" user, 18% absolute levels). 4 arms (crb-legacy, opus-legacy, opus-loose, opus-middle) × 25 users, then the same two trigger-only judges; chained in Hetzner tmux `spike-middle` via `/home/prakh/pear/spike-middle-run.sh`, started 20:52 UTC 2026-09-23. Outputs → `/home/prakh/pear/spike-results/middle-25.jsonl`, `middle-judge-25.jsonl`, `middle-gen.log`, `middle-judge.log`. The A/B script now also tallies multi-asset %, absolute-level %, avg length directly.
+  - *(Done — run finished 21:17 UTC 2026-09-23; results in "Update — 2026-09-24 (middle-ground prompt results)" below. Its absolute-level tally is unreliable — see there.)*
+- **Box state to clean up when the spike ends:** `/home/prakh/pear/spike-distiller` (clone), `/home/prakh/pear/spike-claude-cli` (spike-only CLI 2.1.280), `/home/prakh/pear/.env.spike-distiller` (keys), runner scripts `spike-*-run.sh`, logs in `/home/prakh/pear/`, results in `spike-results/`. The box's global Claude CLI is 2.1.258 and cannot run `claude-opus-5-5` — relevant if made-baskets ever moves to Opus 5.5.
+  - *(Cleaned up 2026-09-24 — see "Box cleanup" below. Global-CLI version claim is stale: it now reports 2.1.281.)*
+
+## Update — 2026-09-24 (middle-ground prompt results)
+
+Run finished 21:17 UTC 2026-09-23 (the "in progress" item above is now done). 25 users generated, 24 judged by the same two trigger-only judges (1 user had no triggers from any arm). Judge agreement 88.9% pairwise, same winner 23/24.
+- **opus-middle wins:** mean rank 1.13 / 1.08, first for 21 / 22 of 24 users. Beats opus-loose 21-3 / 22-2 and prod crb-legacy 24-0 / 24-0.
+- **Evaluable score** 4.75 / 4.67 vs opus-loose 2.67 / 2.46. Now above prod (3.92 / 4.00). Grounding is also the highest of all arms (4.67 / 4.75).
+- **Multi-asset triggers** 3.7% vs opus-loose 33.6%.
+- **Absolute price levels (hand-verified)** 3/109 (2.8%) vs opus-loose 7/113 (6.2%). The script's `ABS_LEVEL` regex false-positives on "$2M liquidations" and "above 0.04%" funding: it reports 61.5% / 13.3%, and the earlier 18% was also inflated. Don't trust that metric without a regex fix.
+- **>5%-only user (d2090ff6):** opus-middle writes exactly the requested alert. Both judges ranked it first.
+- **Costs of the rules:** distinct shapes 100%→82% (a new "moves N% in either direction within W, or funding > F" pattern, but none discarded before Elfa); event legs 37%→17%.
+- **Cost/latency:** $0.099/user, p50 8.7s (same as loose).
+- **Still open:** Builder Chat / topic keying on the remaining ~4% multi-asset triggers.
+- Notion page updated with a "Result 4" section, plus (at the user's request) a top-level **Verdict** callout and an **"At a glance — all arms, both runs"** table at the top of the page.
+
+**Verdict (as written on the Notion page, 2026-09-24):** the best interest-distiller setup measured is **Opus 5.5 + middle-ground prompt, no tools**. Quality is no longer the blocker. Settled: Cerebras keeps the strict prompt; web research dropped. **Not decided (still gates any ship):** cost (~$0.10/user/night vs ~free on Cerebras, ~9s/user serial), ops (CLI on the box, Max-plan usage window, CLI version), and downstream handling of the ~4% multi-asset triggers. No ship/PR decision has been made; the branch stays a throwaway spike.
+
+**What the four rules traded away (measured, this run):** distinct trigger shapes 100% → 82%; event/catalyst legs 37% → 17%; funding legs 48% → 39%, liquidation 44% → 31%; avg length 162 → 126 chars. Relevance held (grok 4.33 vs 4.42, gpt 4.79 tie). Likely cause of fewer events: "explicit numbers" steers toward quantifiable conditions — hypothesis, not tested.
+
+**Judge-relativity caveat:** opus-loose scored lower in this run than in run 1 (evaluable 3.2 → 2.6; vs prod 24-0 → 21-3) with the same prompt — the judges rank against whatever sets are in front of them. Compare arms within a run, not absolute scores across runs.
+
+**Absolute-price-level metric — detail:** `ABS_LEVEL` in `interest-distiller-quality-ab.ts` matches `\$\s?\d` (catches "$2M liquidations") and `(above|below…)\s+\$?\d+(\.\d+)?\b(?!\s?%)`, which backtracks inside "0.04%" and so matches funding thresholds. Hand count of every candidate: opus-loose 7/113, opus-middle 3/109 (all HYPE levels for 2 users, worded as the users' own setups — allowed by the rule; not checked against evidence). Not fixed on the branch.
+
+**Box cleanup (2026-09-24, user-approved):** removed `/home/prakh/pear/spike-distiller` (2.1G clone), `/home/prakh/pear/spike-claude-cli` (224M), `.env.spike-distiller` (keys), `spike-distiller-run.sh`, `spike-judge-run.sh`, `spike-middle-run.sh`. Checked first: no cron/systemd references, no running processes, tmux `spike-middle` already exited. **Kept** (user asked to keep logs): `spike-results/` (all jsonl + logs, referenced by the Notion page) and the loose logs in `/home/prakh/pear/` (`spike-*.log`, `judge-*.log`, `middle-*.log`). Observed: the box's global Claude CLI (`~/.nvm/versions/node/v24.20.0/bin/claude`) now reports **2.1.281**, not 2.1.258 — probably auto-updated; whether it now accepts `claude-opus-5-5` is untested.
+
+## Update — 2026-09-24 (answering the three open ship questions: cost, VPS/CLI ops, multi-asset downstream)
+
+Checked live. The DB counts are read-only queries against the agent DB the Hetzner jobs use (host `yamanote…:42943`, the same one `.env.context-production` points at). **Not independently confirmed as prod vs dev**: `UserValueScore` has 275 rows, close to the 273 recorded on 2026-09-15 as a *dev* validation.
+- **Cost:** up to **155 LLM calls/night** (170 candidate users; 155 have fresh memory, persona, or a recent journal) × ~$0.10 ≈ **$15/night API-equivalent (~$105/week)**. made-baskets logs ~$1–2/day on the same Max-20x login, so the distiller would be ~7× its Claude use. Runtime ≈ 155 × 8.7s ≈ 23 min (p95 ~30 min) serial, well inside the 90-min ceiling. Max-plan headroom isn't measurable programmatically; the 3-strike Cerebras fallback is the only guard. **Only the top 20 users × 2 get personal Elfa watches** (`PERSONAL_TIER_CONFIG`), so a cheaper option is Claude for the top-N value users only. Not decided.
+- **Ops (box):** login is `subscriptionType: max`, `default_claude_max_20x`; the access token expires and refreshes on use (worked with an expired token). The CLI **auto-updates** (2.1.258→2.1.281 on its own; `installMethod: global`, no pin), so a flag change could break it silently apart from the fallback. Box: 2 vCPU, ~2.8 GB available. The distiller at 04:00 and baskets at 14:00–~16:00 don't overlap.
+- **Multi-asset downstream (traced in code):** each thread is keyed on ONE topic; `buildStatementSignalEntry` → Builder Chat gets "A trader is watching {topic}. Their exact watch: {statement}" and may build legs on every ticker named (OR, ≤10 leaves). There's no check that the legs match the topic. On fire, `resolveCandidateLegs` derives the trade idea from the TOPIC, not the matched leg, so a second-asset leg firing offers a trade on the topic asset. In run 2, opus-middle's 4 "multi-asset" triggers were 3 **narrative** topics (privacy-coins ×2, memecoins) plus 1 detector false positive (ONDO); none are asset topics with a second ticker. Prod Cerebras has the worse case today (e.g. `asset:BTC` "BTC drops 2%… or ETH drops 2%").
+- **Bigger finding (model-independent, prod today):** last 30 days, **100% of personal narrative fires (173/173) and personal handle fires (20/20) were dropped** as `dropped_no_legs`. `resolveNarrativeAssets` only resolves narratives currently trending on Elfa, and handle topics return null outright, yet the synthesizer reserves a handle seat per owner. So the remaining multi-asset triggers can't mislead users; they never reach them. Flagged as a separate task.
