@@ -327,6 +327,116 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 
 ---
 
+### 2026-09-28 — Remaining daily/weekly agent jobs and three Twitter crons merged to development
+
+**Status:** [PR #1027](https://github.com/pear-protocol/agent-pear-v2/pull/1027) merged to `development` at 12:43 UTC (`d3ad7e43`). Code and CI are complete; the merge is not in `main`, and live validation/cutover for this batch are unverified. [Story #1026](https://github.com/pear-protocol/agent-pear-v2/issues/1026) remains open for its remaining acceptance criteria.
+
+- Shipped the six agent one-shots (touch-priors, touch-brief, ghost-writer, ghost-synthesis, x-digest, best-trade) and Twitter daily-summary, weekly-recap and trusted-sync. The runners retain a single scheduler-owner cutover path and avoid starting unrelated always-on consumers.
+- Preserved the cron ownership review fixes, fixed four Biome errors and a stale x-digest claim assertion, and replaced the head commit with the user-requested lease-protected push. Both builds, repository Biome, 68 affected agent tests and 148 Twitter tests passed; all three PR checks are green.
+- Remaining work is operational/documentation follow-through, not another migration implementation: agent runbooks/index, full background-suite sweep, isolated Hetzner validation, release/deployment and per-job cutover.
+
+**Evidence:** final commit `25b5a353`; [build/Biome CI](https://github.com/pear-protocol/agent-pear-v2/actions/runs/36423167681); [agent/MCP E2E CI](https://github.com/pear-protocol/agent-pear-v2/actions/runs/36423172675); [[28th Sep 2026]]; [[Harness Integration/Step 5 — Ambient-Agent Job Migration Plan (apps agent)#Update — 2026-09-28 (Story #1026 and PR #1027 merged to development)|Step 5 update]].
+
+---
+
+### 2026-09-28 — Production cutover of 9 background jobs from Railway to Hetzner, plus a latency-exposed transaction bug
+
+**Status:** after release #1010, 9 of 12 jobs cut over live: 3 sentiment, touch-priors, touch-brief, ghost-writer, x-digest, Twitter trusted-sync and daily-summary. Their first scheduled Hetzner runs are still to be confirmed. ghost-synthesis, weekly-recap and best-trade stay on Railway, each for a stated reason.
+
+- Ran each job manually on the box and compared it with Railway's own run that day before flipping anything. Then set the Railway kill-switch, had the service redeployed, verified the scheduler was gone (boot logs plus BullMQ repeat keys in Redis), and only then enabled the systemd timer.
+- The manual-run step caught three problems before cutover: the weekly sentiment job failing only from Hetzner, a Telegram handle in `TWITTER_BOT_USERNAME`, and the Twitter one-shots pointed at the agent Redis instead of Twitter's.
+- Root-caused the weekly sentiment failure: an interactive Prisma transaction with a per-row round trip exceeded the 5 s default over the ~30 ms public-proxy path. It had never failed on Railway's private network. Shipped the fix in PR #1034, re-ran the job successfully, then cut over.
+
+**Evidence:** [PR #1034](https://github.com/pear-protocol/agent-pear-v2/pull/1034) (`64ae34f7`, merged `2765c164`); [[28th Sep 2026#Cutover — 9 of 12 daily/weekly jobs moved from Railway to Hetzner (13:59–18:35 UTC)|28 Sep cutover log]].
+
+---
+
+### 2026-09-29 — Which assets Pear users actually trade (basket/pair familiarity research) *(open, no code changed)*
+
+**Status:** investigation only; ranking logic and architecture not decided.
+
+- Traced the basket/pair generation path and every trade-data source in the repo (plan in [[Better Trading]]), then queried the Pear BE read-only DB.
+- Found ~75% of BE fills are imported off-Pear activity, and ~70% of Pear-placed non-reduce fills are scheduled ADJUST (rebalance/TWAP) from 40 users. The correct unit is a completed OPEN execution.
+- Clean 30d ranking by distinct users (298 users): BTC 135, ZEC 129, ETH 127, HYPE 120, SOL 109. 87% of opened legs are in pairs/baskets.
+- The OI-based `pickDailyAssets` top-10 overlaps 9/10 with Pear's top-10, so a global top-N boost would be near no-op. The value is in compositions, direction skew and mid-tail assets. Popular "assets" like AERO/UNI and ZEC are largely single campaign-style pairs.
+
+- **Update (same day):** Jeyd decided the approach. Rank assets by `0.65 × current holders + 0.35 × 90-day openers` (distinct traders), take the top ~20, then run narrative → pair/basket generation → quant gate. No trending layer. A read-only preview showed ranks 1–10 are 9/10 the OI picks, so the new value sits in the current-holder reordering and ranks 11–20. Status report drafted in Notion.
+
+- **Update (validation):** read-only end-to-end validation of the 65/35 plan.
+  - All top-20 assets pass sentiment → listing → quant ID → pair stats.
+  - The weights are stable (~1.9 top-20 swaps/day).
+  - Blockers: the 20-per-category candidate cutoff (fix: union into `pickDailyAssets`), BE→context transport, and near-zero pair output (0.4%).
+  - Baseline: ~2% of generated compositions opened within 7 days.
+  - Corrected two earlier claims ("dev DB", "HYPE has no quant ID").
+  - Suggested first slice: ranking job + agent context line.
+
+**Evidence:** [[Pear Trader Asset Familiarity — Data Findings]] (§11 for the decision and preview, §12 for validation).
+
+**Update 2026-09-30:** plan finalised and scoped; still no feature code.
+- Final plan written ([[Familiar-Asset Ranking — Final Plan]]); baseline frozen read-only (8 distinct users opened a generated idea within 7d, 16 of 551 compositions, 0 1x1 pairs).
+- Jeyd widened the goal: choose pair vs basket per idea on evidence, and fixing the 0.4% pair bias is in scope. Located the bias in prompt defaults and in the missing pair-stats tool for the model.
+- Groomed into epic [#1064](https://github.com/pear-protocol/agent-pear-v2/issues/1064) + 5 stories (#1065–#1069), three separately measurable releases, branches pushed.
+- Verified live that prod jobs run only on Hetzner from `main` (not `development` as the runbooks said), and fixed the runbooks (`f5cb1a14`).
+- Jeyd locked the V1 signal definitions.
+
+**Evidence:** [[30th Sep 2026#Familiar-asset pair/basket: structure-neutral plan, issue tree, Phase 0 (late)|30 Sep log]], #1064–#1069, `f5cb1a14`.
+
+**Update 2026-10-01:** first two stories built as PRs; nothing merged or in prod.
+- [#1070](https://github.com/pear-protocol/agent-pear-v2/pull/1070) (#1065): daily 65/35 ranking job + shared Redis reader + idea-adoption metric. The metric reproduced the frozen baseline exactly on a live read-only run.
+- [#1071](https://github.com/pear-protocol/agent-pear-v2/pull/1071) (#1066): ranked assets added to the daily sentiment picks, with a safe fallback.
+- Called my own coverage backtest a gate, then retracted it publicly when the user showed it was near-circular; replaced it with an offline replay of the real generator.
+- Built a no-write replay harness and ran it on the Hetzner box in a separate clone (preload patch reaching the Claude-spawned MCP bridge; prod eval log verified unchanged). It showed #1066 changes only 4 candidate assets, reachable in ~31% of runs, so the paid A/B was skipped and the effort moved to #1067 (pair vs basket on evidence).
+- Measured prod's generation funnel: ~25 candidates → ~6 survivors per idea.
+
+**Evidence:** [[1st Oct 2026]], [[Familiar-Asset Ranking — Final Plan]] §11.7, #1070, #1071, #1069 comments.
+
+---
+
+### 2026-09-30 — Sentiment ingestion: plan, story #1052, first two cleanups on a parent branch *(in progress, not in development yet)*
+
+**Status:** 2 PRs merged into the parent branch `sentiment-enhancement`; nothing shipped to `development`/prod. Phase 1 not started. *(superseded — see Update 2026-09-30 evening below)*
+
+- Mapped exactly what asset sentiment consumes (news digest, ≤10 tweets, Tokenomist, Polymarket) and found 9 code-level noise sources; mapped every consumer (feed baskets, chat sentiment node, chat basket/pair agents).
+- Grilled and wrote the plan as story [#1052](https://github.com/pear-protocol/agent-pear-v2/issues/1052): more data (HL price, positioning, CoinGecko news for crypto, better tweet matching) and agentic sentiment with a stronger model; prod history on hold.
+- #1054 (`3deb6f0d`): removed Polymarket strike-ladder odds that were read backwards, which also removed a weekly-run mislabel. #1055 (`5213957c`): sentiment rows now carry `runAt` to every reader.
+- Checked the senior's CoinGecko-scraping idea against the live API instead: plan tier, endpoint limits, coverage on 16 coins + 7 stocks.
+
+**Evidence:** [[Sentiment Data Ingestion — Improvement Plan]], [[30th Sep 2026]], #1052, #1054, #1055.
+
+**Update 2026-09-30 (evening):** still in progress, nothing merged beyond #1054/#1055, nothing in `development`/prod.
+- Phase 1 built as [#1058](https://github.com/pear-protocol/agent-pear-v2/pull/1058) (open, into `sentiment-enhancement`): Hyperliquid price context (returns vs own usual move, vs BTC / Nasdaq-100, 30d range, vol), CoinGecko headlines for crypto with relevance/dedupe guards, events-only web digest, missing-inputs line, all behind `SENTIMENT_MARKET_DATA_ENABLED` (off = prompt byte-identical). Plus a playground that runs old vs new per asset, logs every call, and scores calls against HL price at +1/3/7d. Commits `87284905`, `cf532828`, `fee45633` pushed; `5b484597` (request/error logging, paired scoring) local.
+- First real side-by-side runs found the new variant failing more. Diagnosed from raw OpenRouter responses: deepseek was being routed to Relace, which returns an empty 200; the retry loop can't escape it (strong evidence it's the always-on response cache replaying the empty answer). [#1060](https://github.com/pear-protocol/agent-pear-v2/pull/1060) (open): synth → `deepseek-v4.1-flash` with Relace ignored, web digest → `gpt-6-luna` (model choice was the user's call). Live rerun of the failed assets: 8/8.
+- Day 1 of the 3-day comparison logged (run `2026-09-30T15:35:58Z`). No accuracy result yet. New-variant timeouts (3/17 that run) still undiagnosed.
+
+**Update 2026-09-30 (late):** `5b484597` pushed; [#1058](https://github.com/pear-protocol/agent-pear-v2/pull/1058) merged into `sentiment-enhancement` (`b0abeda0`), then [#1060](https://github.com/pear-protocol/agent-pear-v2/pull/1060) (`7b62243c`). Still nothing in `development`/prod. Local checkout now on `sentiment-enhancement` @ `7b62243c` (same `apps/context` tree as the old `local/combined`); day-2 runs go from there. #1060 isn't flag-gated: flash + luna also hit category sentiment + basket-category fallback once the parent reaches `development`, so check those paths before that PR.
+
+---
+
+### 2026-10-01 — Familiar-asset ideas: ranking + universe + pair-vs-basket built, replayed on prod data, plan re-scoped *(in progress, nothing in development/prod)*
+
+**Status:** 3 PRs open (none merged): #1065 → [#1070](https://github.com/pear-protocol/agent-pear-v2/pull/1070), #1066 → [#1071](https://github.com/pear-protocol/agent-pear-v2/pull/1071) (Release 1), #1067 → [#1076](https://github.com/pear-protocol/agent-pear-v2/pull/1076) (Release 2). #1068 re-scoped, not built. *(superseded — see Update 2026-10-01 evening below)*
+
+- Ranking job (65% current holders / 35% 90d openers, top 20 usable) + nightly adoption metric reproduces the frozen baseline exactly (8 traders, 16/551). A coverage backtest was posted then publicly retracted as circular.
+- #1067: diagnosed why the generator almost never made 1x1 pairs (selection's only stats tool rejected 1x1; prompts pushed size; no shape comparison) and built evidence-based pair-vs-basket selection (pair-stats tool moved to shared, rubric, projected-return check, eval-log `structureChoice`).
+- Built a write-free replay harness on the prod box (separate clones, Redis writes no-op'd, inserts captured, prod logs md5-verified). Paired selection-only A/B on 40 saved prod research runs: HL pairs 5% → 33%, Lighter 0% → 29%, 12/12 pairs pass the final gate, 0 failures after two fix rounds (directional-first + no-hedge fallback; two regex false positives). Full-pipeline run: research cost flat ($1.23 vs prod $1.20), pairs survive the cron into storage.
+- Measured the familiarity funnel from prod's eval log (pool 17% → survivors 14% → ideas 14%): familiar assets are lost at the category pick and in research, not selection — so #1065–#1067 don't move familiarity. Re-read the original brief; "union, boost don't constrain" were our design choices. Decision: ranked assets **replace** the HL/Lighter candidate pool (#1068 rewritten, epic updated).
+- Side findings: stored pairs lose z/hedge when the pair_stats row is reverse-oriented (#1075); backtested returns cover 7 of 1,338 candidate pairs (no return-based ranking possible); Claude Code auto-update on the box briefly removed the CLI binary that prod's basket job uses.
+
+**Evidence:** [[1st Oct 2026]], [[Familiar-Asset Ranking — Final Plan]] §11.7–§11.10, #1064–#1069, #1070, #1071, #1075, #1076.
+
+**Update 2026-10-01 (evening):** Release 1 PRs merged into the release branch; #1068 built and replayed; still nothing in `development`/prod.
+- [#1070](https://github.com/pear-protocol/agent-pear-v2/pull/1070) and [#1071](https://github.com/pear-protocol/agent-pear-v2/pull/1071) merged into `feat/familiar-asset-pair-basket` (13:52 / 13:53 UTC). Ranking timer not installed on Hetzner.
+- #1068 built as draft [#1077](https://github.com/pear-protocol/agent-pear-v2/pull/1077) (`69fce053`): HL/Lighter general + directional passes take their candidate pool from the ranked assets listed on the venue; research gets the pool + stored notes, no category fetch; `considered[]` diagnostic in the eval log; null ranking falls back unchanged.
+- Replay on the prod box (main vs #1068, same day/ranking/category pick, nothing written, prod log md5s unchanged): familiar share of stored legs 25–32% → 100%, research cost per attempt flat (~$1.20), survivors per attempt 4–5 → 7–8; Lighter stored ideas 6 → 3. Opus `529 Overloaded` hit arm C's first try; stopped it and reran once Opus answered.
+- Traced the Lighter drop to the cron's composition-overlap rule (near-copies sharing SOL/SUI/PUMP), not the per-asset cap I first assumed. Fix `eb6353fd` (unused ranked assets first each attempt, exhausted pool fails instead of falling back) pushed to #1077; not re-replayed.
+- `considered[]` showed the top 2 ranked assets rarely survive research (ZEC 1/16, HYPE 2/16). Stored ideas' stats are a soft veto, not a selection reason (no cointegration, |roll z| < 1, some k < 0.1 at 5x) in both arms.
+- Open product question raised: a fully ranked pool removes whole-market discovery on HL/Lighter; option of ≥1 ranked asset per idea.
+- Wrote the replay up in Notion; updated checklists on #1064–#1069 (nothing closed: live checks pending).
+
+**Evidence:** [[1st Oct 2026#Post-replay: #1077, Lighter root cause + fix, epic checklists]], #1077, `69fce053`, `eb6353fd`, #1068 and #1069 comments, Notion "#1068 replay" page.
+
+---
+
 ## Recurring Engineering Themes
 
 Only themes with independent support across multiple, separately-dated pieces of work.

@@ -4,6 +4,9 @@
 
 Direct, conversational and concise.
 
+Apply this style in all replies written to me, not only when drafting messages
+on my behalf.
+
 Usually prefers simple words over formal equivalents.
 
 Often writes thoughts as they occur rather than constructing perfectly

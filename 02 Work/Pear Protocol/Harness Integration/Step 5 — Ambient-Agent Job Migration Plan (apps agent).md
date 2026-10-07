@@ -1,6 +1,7 @@
 # Step 5 — Ambient-Agent Job Migration Plan (apps/agent, 12 jobs)
 
 - Status: Planning only — no code written, no Story opened, no scope decision made. Blocked on the Epic #717/#438 scope question below before any task in this plan starts.
+- Current status: the line above is the original 2026-09-15 snapshot. See the dated updates below, especially [[#Update — 2026-09-28 (Story #1026 and PR #1027 merged to development)]].
 - Date: 2026-09-15
 - Project: Agent Pear harness integration
 - Related: [[Harness Integration/Step 1 — AP Background Processes and Hetzner VPS Inventory#Analysis — 2026-09-15 (apps/agent ambient-agent jobs: difficulty ranking + Claude-harness benefit)|Step 1 §2026-09-15 analysis]] (risk ranking + effort spot check this plan builds on) · [[Harness Integration/Step 4 — Watched-Accounts + Image-Retention Batch on Hetzner|Step 4]] (the `apps/agent` one-shot precedent every job below reuses) · [[00 Home/Current Focus]]
@@ -10,6 +11,8 @@
 Turn the 2026-09-15 difficulty ranking into an executable, per-job task plan, ordered easiest-first, using the exact five-task decomposition already proven on Stories #745/#746/#759/#765: **kill-switch → one-shot flag → systemd unit → live validate → cutover**. This is a plan, not a grooming decision — GitHub Stories/tasks should be opened from this once the scope question is resolved.
 
 ## Precondition — must be resolved before task #1 starts
+
+*Historical precondition; see [[#Update — 2026-09-28 (Story #1026 and PR #1027 merged to development)]] for the approved scope and merged code.*
 
 Epic #717 (yours) explicitly excludes "touch/\*, X posting, signal path" from this migration. 8 of the 12 jobs below (`watch-scheduler`, `ghost-writer`, `ghost-synthesis`, `x-digest`, `touch-brief`, `ghost-shadow`, arguably `global-feedpull`, `signal-funnelrollup`) fall inside that line as written. **Do not open Stories under #717 for those 8 until you've decided whether to amend #717's scope or open a separate epic.** The 4 that are unambiguously in scope regardless (no signal/touch/X involvement) are `ghost-report`, `user-valuescore`, `touch-priors` — wait, `touch-priors` is a `touch-*` job by name; treat it as in the same "confirm scope" bucket as the others. Only `ghost-report`, `user-valuescore`, and `signal-funnelrollup` are clearly outside the excluded categories by function (pure analytics, no touch/X/signal-firing behavior) even though `signal-funnelrollup` has "signal" in its name — worth explicitly confirming that reading before starting, not assuming it.
 
@@ -149,7 +152,7 @@ Ordering reuses the 2026-09-15 risk ranking as-is (validated against the effort 
 - Cutover: highest-caution cutover of the no-LLM jobs — external API budget + user-facing + cross-app dependency stack together here.
 
 ### 11. `touch-brief` — daily 06:40
-- Deps: Cerebras, reads `GlobalFeedItem` rows `global-feedpull` already wrote — **sequencing dependency on #10**, don't build this before #10 is stable.
+- Deps: Cerebras, reads `GlobalFeedItem` rows `global-feedpull` already wrote — **sequencing dependency on #10**, don't build this before #10 is stable. *(corrected 2026-09-28: no Cerebras call in the processor, deps are prisma + redis only. See the Step 1 note's "Correction — 2026-09-28" section.)*
 - Kill-switch: `TOUCH_BRIEF_CRON_DISABLED`.
 - One-shot: `--touch-brief-once`.
 - Systemd: `agent-touch-brief.service/.timer`, `OnCalendar=*-*-* 06:40:00`.
@@ -223,3 +226,26 @@ Two sibling branches off `development` (commits `ee3b4d1b`, `e71d5a03`). Both us
 - A code review of #988 led to fix commit `e0fa4065`, pushed to `elfa-bg-jobs-migration`. It adds `CONTEXT_DATABASE_URL`/`QUANT_DATABASE_URL` to the interest-distiller env template. It makes the per-day distill marker an atomic per-day claim for full runs; single-user jobs such as first-distill now bypass it. It makes Claude `is_error` envelopes count toward the trip. It parses booleans with `z.stringbool()` in the runners, and it checks `ELFA_MONTHLY_CREDIT_RESERVE` is numeric. The marker key changed to `interest-distiller:distilled:<id>:<day>`.
 - Still open: the Opus-path runtime against the 9000s unit timeout is unsized. Cutover state is unchanged.
 - Detail: [[25th Sep 2026]].
+
+## Update — 2026-09-28 (#988 status, checked via `gh`/`git`)
+
+- #988 was **merged** to `development` 2026-09-24 19:05 UTC (`7f074197`). The 09-24 update above says "open", which is stale on that point. The 09-25 review-fix commit `e0fa4065` is also in `development`.
+- Not in `main` as of 2026-09-28. Cutover state is unchanged: units not installed, flags not set.
+
+## Update — 2026-09-28 (Story #1026 and PR #1027 merged to development)
+
+- The user approved the six remaining daily/weekly agent jobs in [Story #1026](https://github.com/pear-protocol/agent-pear-v2/issues/1026). [PR #1027](https://github.com/pear-protocol/agent-pear-v2/pull/1027) merged at 12:43:19 UTC into `development` (`d3ad7e43`, final branch commit `25b5a353`), verified against GitHub and fetched git refs. It is not in `main` at this check. The original scope/planning precondition above no longer blocks these six; hot touch/flex jobs remain outside this story, and ghost-shadow remains parked.
+- **Code merged:** touch-priors, touch-brief, ghost-writer, ghost-synthesis, x-digest and best-trade each have a dedicated entrypoint/runner, scheduler-removal kill-switch, systemd service/timer/env template, deploy lock registration and package start script. ghost-writer and ghost-synthesis explicitly retain their default-true flags; touch-brief's runner supplies the held-assets provider. best-trade keeps Monday 09:30 `America/New_York` and a stable per-week job id, and refuses to boot without the read-only backend DB URL and stats webhook.
+- **Review/CI fixes in the final commit:** x-digest's per-day claim uses an owner token and compare-and-delete release; the claim's assignment is separate from its condition. Imports and two Twitter files were formatted for Biome. A stale x-digest test expecting the old constant claim value was updated.
+- **Verified this session:** both agent and Twitter builds passed; Biome checked all 1,774 staged files with CI line endings; 10 affected agent suites passed (68 tests), including all six runner DI specs; the Twitter suite passed 22 suites / 148 tests, with one suite / six tests skipped. All three PR checks passed: [build + Biome](https://github.com/pear-protocol/agent-pear-v2/actions/runs/36423167681), [agent and MCP E2E](https://github.com/pear-protocol/agent-pear-v2/actions/runs/36423172675). The full `background/*` sweep and the PR's reported mutation checks were not repeated here.
+- **Still open:** agent runbook sections and `scripts/hetzner/README.md` entries for these six; isolated Hetzner validation; release to `main`; deployment and per-job cutover. Validate ghost-writer before ghost-synthesis, and best-trade with the week already marked sent before a real send. Its read-only backend DB credential still needs to be arranged. After release/deployment, disable the owning Railway scheduler first, then enable its Hetzner timer. #1026 remains open; no live flags or timer state were checked or changed in this session.
+- **Related Twitter scope in the same PR:** daily-summary, weekly-recap and trusted-sync have a separate scoped `CronRunnerModule` and a checked-in Twitter runbook. It avoids bot polling/queue consumption, propagates failures, and weekly recap dedupes against a stable Sunday slot with a nine-day TTL. Live validation and cutover are unverified; weekly recap queues a public X post, so the runbook's pre-claimed-slot procedure matters before testing. These three are outside #1026's six-agent-job acceptance criteria.
+- [[28th Sep 2026]] records the merge and checks. [[Harness Integration/Step 1 — AP Background Processes and Hetzner VPS Inventory#Update — 2026-09-28 (PR #1027 merged: six agent jobs and three Twitter crons)|Step 1 update]] distinguishes the 27 checked-in services from observed live timers.
+
+## Update — 2026-09-28 (live cutover: 4 of the 6 agent jobs moved)
+
+- Released in #1010 (`f524af1f`), deployed to the live checkout `/home/prakh/pear/agent-pear-v2`. Units installed unchanged from the repo.
+- **Cut over** (manual run → `*_CRON_DISABLED=true` on `ap-worker-prod` → redeploy → scheduler gone from Redis → timer enabled): touch-priors (142 users, matched Railway), touch-brief (proposed=0; the 3 users briefed that morning were deduped via cadence), ghost-writer (owners=131, 7m22s vs ~42s on Railway, due to Hetzner→Railway latency) and x-digest (dedupe verified: 17/17 already digested; the full twitterapi.io/Cerebras path first runs at the Tue 05:00 timer).
+- **Not cut over:** ghost-synthesis waits on ghost-writer stability (same-day second sweep churned 34 created / 182 superseded, not yet understood). best-trade is skipped because `BE_READONLY_DATABASE_URL` isn't arranged.
+- The VPS `REDIS_URL` was confirmed to be the worker's Redis (today's x-digest claims and the worker's BullMQ queues are present) before any Redis-dependent run.
+- Detail and the per-job table: [[28th Sep 2026#Cutover — 9 of 12 daily/weekly jobs moved from Railway to Hetzner (13:59–18:35 UTC)|28 Sep cutover]].

@@ -13,6 +13,7 @@
 [[My Identity]]
 [[Goals]]
 [[My Writing Style]]
+[[Writing PRs, Issues and Commits]]
 
 ## Reviews
 [[Reviews]]

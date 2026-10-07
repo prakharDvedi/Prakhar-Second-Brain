@@ -12,3 +12,5 @@ Navigation only — open the note for context, tradeoffs, and evidence.
 - [[Internal-Leak Guard — Contextual Frame vs Unconditional Deny-List]] — gate model/provider name matches on disclosure framing instead of an unconditional deny-list.
 - [[TWAP Close-All — Explicit Fallback Required]] — close-all stays market-only unless the user explicitly chooses a different execution mode.
 - [[Confirm-Time Margin Gate]] — add a fail-closed margin check at confirm time, exempting reduce-only adjustments.
+- [[Familiar-Asset Ranking — Final Plan]] — rank assets by 0.65 current holders + 0.35 90-day openers (distinct Pear traders), union the top 20 into the daily narrative universe, and pick pair vs basket per idea on evidence (§11).
+- [[Coinglass HL Wallet Distribution — Retire, Don't Mute]] — retire the 2 dead HL wallet endpoints and say wallet data is unavailable, instead of muting a tool that fails on every call.

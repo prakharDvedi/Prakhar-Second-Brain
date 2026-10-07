@@ -1,7 +1,19 @@
 # Daily Work Logs
 
+## October 2026
+
+- [[6th Oct 2026]]
+- [[5th Oct 2026]]
+- [[2nd Oct 2026]]
+- [[1st Oct 2026]]
+
 ## September 2026
 
+- [[30th Sep 2026]]
+- [[29th Sep 2026]]
+- [[28th Sep 2026]]
+- [[27th Sep 2026]]
+- [[26th Sep 2026]]
 - [[25th Sep 2026]]
 - [[24th Sep 2026]]
 - [[11th Sep 2026]]

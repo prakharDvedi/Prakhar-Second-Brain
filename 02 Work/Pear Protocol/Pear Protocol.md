@@ -7,6 +7,7 @@
 ## Open Initiatives
 
 - [[Agent Pear Revamp]] — Oracle/DEMI harness research and current direction for the AP redesign
+- Pear sentiment basket and pairs plan — [[Better Trading]] (repo analysis + plan) and [[Pear Trader Asset Familiarity — Data Findings]] (BE trade-data numbers)
 
 ## Work History
 
@@ -35,6 +36,11 @@
 ## Career Evidence
 
 [[Resume Evidence]]
+
+## How To
+
+- [[Telegram Local Startup]] — run the TG bot locally against local DBs
+- [[Codebase Retrieval with codectx (Graphify + Embeddings)]] — `codectx "<question>"` / `/codebase`: persistent code graph + semantic search for any repo
 
 ---
 

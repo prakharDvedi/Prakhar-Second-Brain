@@ -16,4 +16,6 @@ A few repos are iterations of each other rather than standalone:
 
 ## Related
 
+College major project planning (ECE direction, built from the Pear work): [[Major Project - ECE Direction]], chosen plan: [[Major Project - Combined Plan]], anonymised college set: [[00 Index]] (E1 to E4 in `Major Project (College)/`)
+
 Career-relevant work at actual companies (not personal projects) lives separately under [[../05 Career/Resume|05 Career]] — [[../05 Career/Companies/Brinavv|Brinavv]] and [[../05 Career/Companies/Pear Protocol|Pear Protocol]].

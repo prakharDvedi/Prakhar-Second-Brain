@@ -9,7 +9,7 @@ Navigation only — open the note for the full write-up.
 - [[Partial Fill Alert Blamed the Wrong Cause]] — partial-fill alerts asserted a hardcoded "$11 minimum" cause that a real incident's own numbers disproved. Resolved.
 - [[HIP-3 Margin Backfill Passed Orders It Could Never Fund]] — No-Dex-Abstraction accounts passed margin validation for orders that failed at execution. Resolved.
 - [[Reduce-Only Rejection Didn't Mean the Trade Failed]] — a "would increase position" rejection was always treated as failed, even when the user's target was already met. Resolved.
-- [[TRIGGER-LADDER JSON Crash Silently Substituted the User's Trade]] — an unvalidated condition crashed, then the model silently retried with a different trade type. Resolved.
+- [[TRIGGER-LADDER JSON Crash Silently Substituted the User's Trade]] — an unvalidated condition crashed, then the model silently retried with a different trade type. Resolved. Follow-up 2026-09-28: the validation error didn't name the failing field, so ratio/basket opens always failed (PR #1017).
 
 ## Agent / LLM
 
@@ -22,6 +22,7 @@ Navigation only — open the note for the full write-up.
 - [[Internal-Leak Guard Blocked Legitimate AI-Industry Reporting]] — the leak-detection guard blocked legitimate AI-industry news. Resolved, ongoing tuning surface.
 - [[Kalshi Odds Query Fell Into a Planner Routing Dead Zone With No Empty-Plan Fallback]] — a Kalshi "odds" query hit a node trigger-text conflict (research includes macro, excludes live price; marketScanner doesn't cover Kalshi either) and the planner emitted an all-null decision nothing downstream caught. Diagnosed, not confirmed resolved — no fix implemented.
 - [[Generic US-Stock Picks Refused as Crypto-Only, Then Reported as a Data Outage]] — the planner judged "what stocks to long/short" out of scope (crypto-only) and emitted an empty plan; the composer told the user data was unavailable. Deterministic under a long execution-flow history, a fluke otherwise. Fix in review (PR #986, not merged).
+- [[Release PR 1010 Pre-Merge Review]] — `/code-review high` of the development → main release (#1010): 10 unverified candidates; two pre-merge risks (`HL_API_PROXY` precedence on the trade path, one-tap `/menu` "Confirmations off"). **Open.**
 - [[BNB-AVAX Pair Orientation Was Lost at the Agent Boundary]] — canonical pair-stat orientation was flattened into prose; the pair LLM later invented an inverse-sign transformation, while a separate frontend display path can also mix requested labels with canonical scores. Diagnosed; no production fix implemented. (Update 2026-09-24: partly fixed by agent-pear-v2 #905 and #947; #801 still open, #807 closed unmerged — see the Update section in the note.)
 
 ## Telegram

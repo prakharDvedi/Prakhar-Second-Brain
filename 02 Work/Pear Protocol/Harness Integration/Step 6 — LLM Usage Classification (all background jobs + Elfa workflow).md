@@ -1,6 +1,7 @@
 # Step 6 — LLM Usage Classification (all background jobs + Elfa workflow)
 
 - Status: Reference report — classification only, no migration work in this note.
+- Current corrections/status: see [[#Correction — 2026-09-28 (touch-brief classification and PR #1027 merge)]]; the original report below is preserved as its 2026-09-15 snapshot.
 - Date: 2026-09-15
 - Project: Agent Pear harness integration
 - Related: [[Harness Integration/Step 1 — AP Background Processes and Hetzner VPS Inventory]] · [[Harness Integration/Step 5 — Ambient-Agent Job Migration Plan (apps agent)]]
@@ -88,3 +89,8 @@ Verified 3 of these 6 against the actual code this session (marked ✓); the oth
 | Unmeasured — access gap, not a zero | `interest-distiller`, `watch-scheduler`, `ghost-synthesis` (judge/author), `x-digest`, `touch-brief`, signal processor | 6 jobs, all Cerebras `gpt-oss-120b`, no dashboard access currently — genuinely unknown, not assumed cheap |
 
 **Recommended fix, applies to both gaps at once:** add per-job `HTTP-Referer`/`X-Title` tagging to every OpenRouter call, and wire Langfuse tracing into the background processors the same way the interactive DAG already has it. Both are the same root cause — nothing in this codebase gives background-job LLM calls their own identity, on either provider — and both are small, mechanical changes, not a redesign.
+
+## Correction — 2026-09-28 (touch-brief classification and PR #1027 merge)
+
+- The original report's `touch-brief` Cerebras/LLM classification is stale. The current `TouchBriefRun` uses Prisma, Redis and the held-assets provider and makes no LLM call; `touch-delivery` is the separate downstream LLM consumer. This was already traced in [[Harness Integration/Step 1 — AP Background Processes and Hetzner VPS Inventory#Correction — 2026-09-28 (why the held-back jobs stayed on Railway)|Step 1's correction]] and rechecked against `development` here. The historical cost tables should not be read as current per-job attribution.
+- [PR #1027](https://github.com/pear-protocol/agent-pear-v2/pull/1027) merged six agent jobs, including touch-brief and x-digest, and three Twitter crons into `development` (`d3ad7e43`). This changes their available runner/deployment shape; it provides no new model-cost measurement or evidence of live cutover. Current implementation, verification and open steps: [[Harness Integration/Step 5 — Ambient-Agent Job Migration Plan (apps agent)#Update — 2026-09-28 (Story #1026 and PR #1027 merged to development)|Step 5 update]].

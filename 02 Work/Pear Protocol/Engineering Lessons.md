@@ -499,3 +499,112 @@ With `ai@6` `streamText`, an error on a later step of a multi-step tool loop doe
 **Why it matters:** a fallback that looks right in a first-step failure test can be dead for the failures that actually happen under load. Rate limits are more likely on later steps, because each step resends the full prompt. When wrapping a streaming call with a fallback, key it on "no output was produced" and test a failure after a tool call, not just an initial rejection. Separately, a fallback on the same provider key shares the rate-limit bucket that just rejected the primary, so it can't help with a 429.
 
 **Evidence:** [[25th Sep 2026]], PR #923 commits `ae33a54c` (fix), `0faadd94` (test).
+
+### A packaged desktop app's writes to AppData can land in a private virtualized copy
+
+On Windows, an MSIX-packaged app (the Claude desktop app is one) gets its writes under `%LOCALAPPDATA%` / `%APPDATA%` redirected into `AppData\Local\Packages\<app>_…\LocalCache\…`. Processes launched from inside the app see the merged view, so everything looks fine — but a normal terminal can't see those files at all.
+
+**Context:** building the external `codectx` index from a Claude Code session, the Graphify output went to `%LOCALAPPDATA%\CodeIntelligence\…`. `graphify query` printed its real path as `AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Local/CodeIntelligence/…`; `Test-Path` from outside the package said the normal path didn't exist. Moved the store to `~/.local/share/code-intelligence` (not virtualized, same as `~/.local/bin`).
+
+**Why it matters:** any tool, cache, or config an agent session creates "for later use in a terminal" silently won't exist for the terminal. Put user-level tooling data outside AppData (e.g. under the home directory), or verify from a process outside the app before relying on it.
+
+**Evidence:** [[Codebase Retrieval with codectx (Graphify + Embeddings)]], [[27th Sep 2026]].
+
+### A validation error that doesn't name the field just moves the model's guessing loop
+
+Validating LLM tool input only helps if the error says *which* field is wrong. With a zod discriminated union, `issue.message` alone ("expected string, received undefined") gives the model nothing to act on, so it guesses field names and retries. Include `issue.path` in the message, and name each variant's fields in the tool description, not only in one node's prompt.
+
+**Context:** the 2026-08-24 fix validated `open_position`'s `condition` but joined only `issue.message`. Ratio / weighted-ratio opens then failed on every attempt, with up to 11 retries per turn, and the model ended by inventing platform limits to explain the failures.
+
+**Why it matters:** an unactionable error can be worse than a crash. It burns retries and pushes the model to make up an explanation for the user.
+
+**Evidence:** [[TRIGGER-LADDER JSON Crash Silently Substituted the User's Trade#Follow-up — 2026-09-28 (the validation error wasn't actionable)]], PR #1017 (`a78b6bd7`).
+
+
+### Moving a job off the database's private network can break code that was only ever fast enough
+
+Code that makes one DB round trip per row inside a time-boxed transaction works on the database's private network (~1 ms per trip) and can fail once the same job runs across a public proxy (~30 ms per trip). Prisma's interactive `$transaction` defaults to a 5 s timeout, so ~175 row-by-row writes overran it, and the failure rolled back every row the run had already paid an LLM for.
+
+**Context:** moving the weekly sentiment job from Railway to a Hetzner systemd one-shot. The daily variants (~15 rows) passed and the weekly (~175 rows) failed with "Transaction not found". Fixed with an explicit timeout (PR #1034). Batching the writes into fewer round trips is the upgrade if row counts grow.
+
+**Why it matters:** "it's worked on Railway for months" is no evidence for a relocated job. Before cutover, run the largest variant of each job from the new host, not just the daily one, and look for per-row loops inside transactions, locks or timeouts.
+
+**Evidence:** [[28th Sep 2026#Weekly sentiment failed from Hetzner → fixed in PR #1034]], PR #1034 (`64ae34f7`).
+
+### A prediction-market probability isn't a direction unless you know where the price is
+
+"Will X be above $K on date?" at 95% Yes usually just means spot is already far above K. A "drop below $K" market with high Yes is bearish. So a rule like "high Yes = bullish" reads strike ladders wrong about half the time. The odds only say something about direction next to the current price and the strike (e.g. the implied chance of a +Y% move by the date).
+
+**Context:** asset sentiment kept only Polymarket *price* markets (above/below/hit/drop) and told the model "high Yes odds (>65%) bullish". Spot was never in the prompt. Removed in #1054 rather than fixed, since a proper reading needs price data that phase 1 of #1052 only now adds.
+
+**Why it matters:** any place that feeds prediction-market odds to an LLM as a sentiment signal has the same trap. The chat agent's prediction-odds tool was not checked for this.
+
+**Evidence:** [[Sentiment Data Ingestion — Improvement Plan]] (noise #6), PR #1054 (`3deb6f0d`).
+
+### A retry that resends the identical request can't escape a failure an exact-match cache has stored
+
+If a response cache keys on the exact request, retrying the same request inside the TTL returns the same cached answer. A "successful" bad answer (HTTP 200 with empty content) gets cached like any other, so the retry loop just replays it. Retries only help if the retried request can land somewhere else: bypass the cache, or change something the cache keys on.
+
+**Context:** the asset-sentiment synth retries up to 3 times on empty prose. The shared OpenRouter factory sends an always-on 5-minute response cache header (exact messages + params). When deepseek was routed to Relace and came back empty, attempts 2 and 3 returned 0 tokens, $0, in under a second. That fits a cache hit, but it was not confirmed from a cache header. Relace also showed ~99.5% "uptime" on OpenRouter while doing this, because an empty 200 counts as up.
+
+**Why it matters:** any retry-on-bad-content loop (empty output, failed parse, schema mismatch) behind this factory has the same blind spot, not just sentiment. Retry on HTTP errors isn't affected, since errors aren't cached. The fix (bypass cache on retry) is not built yet.
+
+**Evidence:** [[Sentiment Data Ingestion — Improvement Plan]] (Update "why the new variant failed"), `packages/shared/src/llm/openrouter.constants.ts` (`CACHE_TTL_SECONDS = 300`), PR #1060.
+
+### Find out which branch actually runs in prod from the deploy trigger and the host, not the runbook
+
+A runbook line like "the box tracks `development`" is a claim that stays true only until someone changes the deploy workflow. What decides where code runs is the workflow's trigger plus what's actually checked out on the host. Check both before planning anything that depends on "when does this reach users".
+
+**Context:** two Hetzner runbooks said the box's checkout tracks `development`. `deploy-hetzner.yml` triggers only on pushes to `main` and checks out the exact pushed SHA, and on the box the repo was detached at the `origin/main` tip. Railway prod had every cron kill-switch on, so Hetzner was the only prod runner. The release plan for the familiar-asset project had assumed "merge to `development` → watch in prod", which would have measured nothing.
+
+**Why it matters:** release sequencing, A/B measurement windows and "is this live yet?" answers all depend on the real deploy source. A stale branch claim doesn't fail loudly; it just makes you wait for data that never arrives.
+
+**Evidence:** [[30th Sep 2026#Familiar-asset pair/basket: structure-neutral plan, issue tree, Phase 0 (late)]], `.github/workflows/deploy-hetzner.yml` (`branches: [main]`), runbook fix `f5cb1a14`.
+
+
+
+### Before fixing "the filter dropped my output", recompute which rule actually fired
+
+When a chain of filters drops results and the drop reasons aren't logged at the level you captured, the obvious-looking rule is a guess. Re-run each rule against the saved inputs and outputs before designing the fix. A fix aimed at the wrong rule passes its specs and changes nothing.
+
+**Context:** in the #1068 replay, Lighter stored 3 of 8 valid ideas. The ideas reused SOL/SUI/PUMP, so the per-asset cap (max 3 per run) looked like the cause, and the proposed fix was "drop capped assets from the pool". Recomputing the cron's checks on the saved selections showed most drops tripped the composition-overlap rule (>50% of legs shared with an accepted idea); PUMP was only on its 2nd use. The cron logs skip reasons at debug, which the replay didn't capture. The fix became "unused assets first each attempt" instead.
+
+**Why it matters:** the cap-based fix would have shipped, passed tests and left the shortfall in place.
+
+**Evidence:** [[1st Oct 2026#Post-replay: #1077, Lighter root cause + fix, epic checklists]], `made-baskets-cron.service.ts` (`isCompositionDuplicate`, `hitsFrequencyCap`), `eb6353fd`.
+
+---
+
+### Repeat runs of an LLM experiment are not independent samples if a response cache sits in front of the model
+
+Running the same experiment several times only measures noise if each run actually reaches the model.
+
+**Context:** the sentiment playground's repeat runs went through OpenRouter, whose response cache is always on with a 5 minute TTL. Three runs started about 2 minutes apart cost $0.5929, $0.0486 and $0.0513, and the later two returned the same calls as the first (`new` 15/2/0 in all three).
+
+**Why it matters:** a noise estimate or an arm comparison built on cache replays understates the variance and double-counts calls when scored. The cost line is the tell: a repeat that is about 10 times cheaper was served from the cache.
+
+**Evidence:** [[5th Oct 2026#Noise measurement]], `requests.jsonl` costs per run.
+
+---
+
+### A dry-run count hides what a filter throws away; read the dropped items
+
+A before/after count said a stricter tweet matcher was removing collisions, but the counts could not show that it was also removing on-topic items.
+
+**Context:** the first strict rule (capitals-only whole word) looked good by count (`PUMP` 6→0, `HYPE` 15→6). Reading the dropped tweets showed it had lost lowercase "btc" / "sol" and 8 of 9 tweets about Hyperliquid, which the old substring search had matched only by accident.
+
+**Why it matters:** a filter's precision gain is only visible next to its recall loss, and only the dropped items show the recall loss.
+
+**Evidence:** [[5th Oct 2026#A2: strict tweet matching (PR #1083, merged)]], `tweet-match-diff.ts` (`DUMP=`).
+
+---
+
+### A stacked PR must be retargeted before its parent merges, or the child lands on a dead branch
+
+Merging a PR whose base is another feature branch only updates that feature branch.
+
+**Context:** #1081 was based on #1080's branch. After #1080 merged into `sentiment-enhancement`, #1081 was merged into `feat/sentiment-measurement`, so the strict-tweet commit never reached `sentiment-enhancement` and a later revision was in no merged PR. It took a replacement PR (#1083) to land it.
+
+**Why it matters:** the PR shows as merged, so the miss is invisible unless the target branch is checked.
+
+**Evidence:** [[5th Oct 2026#PR / merge mix-up (corrected)]], `git merge-base --is-ancestor` against `origin/sentiment-enhancement`.

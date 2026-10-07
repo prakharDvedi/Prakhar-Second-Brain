@@ -169,3 +169,14 @@ The scoping fix landed: PR #803, merged into `development`. Every `apps/context`
 **All 12 one-shots across `apps/context`, `apps/indexing`, and `apps/agent` are now installed on the box and live-tested working**, correct output, clean exit, confirmed via real runs, not just code review. Only `context-baskets.timer` is enabled; the other 11 sit disabled, cutover for any of them is now a pure flip (Railway kill-switch + `systemctl enable --now`), not attempted this session.
 
 New bug found and filed separately (not part of this Story's scope, a different service): **#806**, `CoinIndexService`'s eager startup refresh can silently swallow `--coin-index-once`'s forced-refresh request under a timing race. Root cause #2 from the original incident (`TwitterCollectorService`'s missing per-row claim) remains genuinely unfixed.
+
+## Update — 2026-09-28 (OI timer is live on Hetzner; first 429 rate-limit failure)
+
+Verified on the box (`systemctl list-timers`, `journalctl -u context-oi.service`): `context-oi.timer` and `context-tokenomist.timer` are **enabled and firing** (OI `OnCalendar=*-*-* 03:00:00 UTC`), so the earlier "only `context-baskets.timer` is enabled" line is stale for these two. Whether Railway's in-process cron is also off (`OI_CRON_DISABLED=true`) was not checked.
+
+Run history, from journal:
+- 22–25 Sep: `Synced 188/188`, 0 × 429 (4 batches of 50, ~13s apart).
+- 26–27 Sep: bootstrap failed, `supportedExchangePairs failed with code 401: Upgrade plan` (Coinglass subscription lapsed).
+- 28 Sep: `Synced 77/188`, **111 failures, all `code 429: Too Many Requests`**, starting 1s into batch 2 (03:01:06 UTC). Same code, same batching as the clean 25 Sep run.
+
+Hypothesis (unconfirmed): the plan was renewed at a lower tier with a stricter per-minute limit. About 78 calls (1 pairs fetch + 77 OI) succeeded before the 429s, which fits an ~80 req/min cap. The cron's 50-parallel-per-batch fan-out (`oi.cron.ts`) goes over any per-minute cap in that range. Also seen: the Discord error webhook itself returned 429 under the error burst.
