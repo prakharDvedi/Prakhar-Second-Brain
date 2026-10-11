@@ -435,6 +435,20 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 
 **Evidence:** [[1st Oct 2026#Post-replay: #1077, Lighter root cause + fix, epic checklists]], #1077, `69fce053`, `eb6353fd`, #1068 and #1069 comments, Notion "#1068 replay" page.
 
+### 2026-10-05 → 2026-10-11 — Small production fixes merged to development (catch-up entry from GitHub)
+
+**Status:** merged into `development` unless noted. Sentiment work is tracked separately in [[Sentiment Data Ingestion — Improvement Plan]].
+
+- #1085 reversed 1x1 pair stats keep z-score and hedge ratio; #1087 and #1088 Elfa empty-message and "a system" false-positive fixes; #1084 (Gemini pin) closed unmerged.
+- #1090 retired the Coinglass HL wallet distribution tool ([[Coinglass HL Wallet Distribution — Retire, Don't Mute]]).
+- #1091 chart/chip extractor now marks the current ask: [[Chart and Chip Extractor Picked Up an Earlier Turn's Asset]] (100-input prod comparison, model switch tried and rejected, one weak point left open).
+- #1092 and #1093 retry transient context DB errors on connect and on the tweet-queue writes (P2002 after a retried create counts as queued). Not exercised against a real outage.
+- #1096 stopped startup index refreshes racing one-shot shutdown: update in [[Hetzner One-Shot's Full AppModule Boot Fired an Unrelated Cron, Colliding With Railway]]. Prod confirmation pending.
+- #1097, #1098, #1099 telemetry-only: real provider error on advanced stream failures, Elfa 400/422 response body in logs (cause of the Elfa 400 still unknown).
+- Filed pear-price-fetch#86 (Orbs feed 503 freezes all price runs and signals since 7 Oct; open).
+
+**Evidence:** [[6th Oct 2026]], [[7th Oct 2026]], [[8th Oct 2026]], [[9th Oct 2026]], [[10th Oct 2026]], [[11th Oct 2026]], PR bodies #1085 to #1099.
+
 ---
 
 ## Recurring Engineering Themes

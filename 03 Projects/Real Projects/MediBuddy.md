@@ -212,3 +212,34 @@ Tests cover medicine matching, policy extraction, insurance calculations, refere
 ## Product scope
 
 MedBud is designed to surface items worth checking, show where information came from, and explain what to ask next. It is not a medical diagnosis tool, legal determination, or substitute for an insurer's final claim decision.
+
+---
+
+# Progress log
+
+Dated entries, newest last. Evidence is the merged PRs in [prakharDvedi/MedBud](https://github.com/prakharDvedi/MedBud).
+
+## 8th Oct 2026
+
+**Frontend, PR #15 (merged)**
+- Fira Sans is the single typeface. Noto Sans Devanagari for Hindi, Plex Mono kept only for figures. Type scale added in `globals.css`.
+- English/Hindi switch now slides and the page crossfades via the View Transitions API. Hero renders both languages in one grid cell so its height does not jump on switch.
+- shadcn set up by hand. `shadcn init` overwrote the theme tokens and added Geist, so I reverted it and added only the Button (marigold variant).
+- Landing example review card has a Bill / Insurance switch. Bill example: ceftriaxone x6 at ₹480 against NPPA ₹63.88 per vial, difference ₹2,496.72 on a ₹14,600 bill. Insurance example: ₹1,00,000 estimate, insurer pays ₹61,200, patient pays ₹38,800.
+- Under 768px the header nav is hidden and the hero is text only.
+
+**Security, PR #16 (merged)**
+- Per-user rate limits through a Postgres rpc (`check_rate_limit`): 60/hour on the Groq routes, 30 for upload creation, 10 for demo routes. Fails closed with a 503.
+- Security headers including CSP, generic API error messages, 10 MB upload cap in the route, the client and the storage bucket (PDF/JPG/PNG only).
+- Migration was applied by hand in the Supabase SQL editor. Checked afterwards on the hosted project: table, function and bucket limit all present.
+
+**Mission and privacy page, PRs #17 and #18 (merged)**
+- `/mission` with mission and privacy sections in English and Hindi, content from the project proposal. `/privacy` redirects to it. Contact email and a consent line under signup. #18 existed because the email commit missed the #17 merge.
+
+**Open loops**
+- Remote migration history does not match the local folder (8 local migrations unrecorded, 2 remote-only). Do not run `supabase db push` until it is repaired.
+- Rate limit not yet tested as a signed-in user against the deployed app.
+- "We do not sell your documents" is on the privacy page and is not verified from code.
+- No self-serve delete or consent screen yet. The proposal lists both for month 1.
+- Sections below the hero still differ by about 25px between English and Hindi.
+- Whole-project code and security review prompt written, review not run.

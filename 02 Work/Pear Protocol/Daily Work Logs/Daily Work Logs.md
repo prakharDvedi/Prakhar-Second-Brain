@@ -2,6 +2,11 @@
 
 ## October 2026
 
+- [[11th Oct 2026]]
+- [[10th Oct 2026]]
+- [[9th Oct 2026]]
+- [[8th Oct 2026]]
+- [[7th Oct 2026]]
 - [[6th Oct 2026]]
 - [[5th Oct 2026]]
 - [[2nd Oct 2026]]
