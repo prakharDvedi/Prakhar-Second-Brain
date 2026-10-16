@@ -361,3 +361,51 @@ Read-only: BE role plus quant `made_baskets` inside `READ ONLY` transactions; ra
 - **Exact-composition adoption** (opened / unique compositions): PRE 3/159 (1.9%, 3-day) or 2/159 (1.3%, 1-day); POST 1/17 (3-day) or 4/54 (7.4%, 1-day, 4 users). POST is 17–54 compositions and 1–4 users, so it is not a lift. Compare against the ±2-user weekly noise in §8.1.
 - **Familiar share of what traders open did not move:** 59% → 61% of open legs. Our ideas moved toward what traders already trade; what traders trade did not move toward our ideas.
 - **Caveats.** The POST follow-up is 1–4 days, not 7. The suggested-asset universe overlap (60% / 53–59% of opens fully inside it) is mostly the same BTC/ETH/SOL/ZEC set, so it says little by itself. Nothing links an open to an idea (§8, exposure-based only). Script: session scratchpad `familiar-check.cjs` (not committed). The full 7-day read for 10-05 → 10-08 generation is due about 10-15 → 10-16; the post-release window from #1069 is still about 10-19.
+
+### 11.19 Update 2026-10-12 — prod basket provider back to Claude
+
+- `BASKET_LLM_PROVIDER=openrouter` → `claude` in the box's `.env.context-production` (~13:24 UTC, user decision, Claude login verified working). From the 2026-10-12 14:00 UTC run, prod uses the Claude research + selection path again, so §11.15's "research stage NOT active in prod" holds only for 10-02 → 10-12. Post-release reads (#1069) span both providers; split at 10-12. This also makes the #1067 / PR #1076 prompt changes (Claude path) relevant to prod again. Details: [[12th Oct 2026]].
+
+### 11.20 Update 2026-10-14 — partial post-release adoption read (read-only)
+
+Same definitions as §8.1 (exact composition, HL + Lighter, non-bot, non-vault, first fill within 7d after a generation), read with the repo's own `measureIdeas`, `OPENS_SQL`, `CLOSED_POSITIONS_SQL`; quant `made_baskets` in a `READ ONLY` transaction. Opens read up to 2026-10-14, so every follow-up is truncated (full 7d only for runs before about 10-07).
+
+| Generated window | Rows | Unique compositions | Opened | Matched opens | Users |
+|---|---|---|---|---|---|
+| PRE 09-28 → 10-05 14:30 (category pool) | 246 | 159 | 3 (1.9%) | 4 | 3 |
+| POST 10-05 14:50 → 10-12 14:00 (ranked pool, OpenRouter) | 202 | 131 | 8 (6.1%) | 10 | 7 |
+| POST 10-12 14:00 → now (ranked pool, Claude; ≤2d follow-up) | 70 | 68 | 2 (2.9%) | 5 | 4 |
+| POST all 10-05 14:50 → now | 272 | 198 | 10 (5.1%) | 15 | 10 |
+
+POST all by venue: HL 8/100 (8%), Lighter 2/98 (2%). By shape: pair 0/14, multi-leg 5/87, directional 5/97. Not a lift claim: 3 → 10 opened compositions on 1–4 day follow-ups, within the ±2-user weekly noise of §8.1 for the users count only loosely (7–10 users vs 3). The full 7-day read for 10-05 → 10-08 generation is due about 10-15 → 10-16; #1069 about 10-19. Script: session scratchpad `post-release.ts` (not committed).
+
+### 11.21 Update 2026-10-14 — weekly before/after comparison, and did opens rise? (read-only)
+
+Read-only: BE role (`OPENS_SQL`, `CLOSED_POSITIONS_SQL`) and quant `made_baskets` in a `READ ONLY` transaction, via the repo's `measureIdeas` / `eligibleOpens` / `botUsers`. HL + Lighter, non-bot, non-vault. "Ideas" = unique compositions. Familiar = the 10-07 ranking's 20 assets (BTC ETH ZEC HYPE SOL NEAR LIT UNI XRP PUMP SUI ENA LINK AERO ADA XMR WLD AAVE ONDO DOGE), so shares differ slightly from §11.18 (10-08 ranking). Opens read to 2026-10-14, so the "After" rows have 1–7 days of follow-up.
+
+**By generation week** (same shape as the §11.18 table):
+
+| Ideas generated | Days | Ideas | Familiar share of legs | Exact-match opens | Users | Compositions opened | Opens per day |
+|---|---|---|---|---|---|---|---|
+| 08-31 → 09-07 | 7.0 | 92 | 10.4% | 4 | 2 | 3 (3.3%) | 0.57 |
+| 09-07 → 09-14 | 7.0 | 191 | 16.8% | 12 | 6 | 10 (5.2%) | 1.71 |
+| 09-14 → 09-21 | 7.0 | 210 | 9.4% | 1 | 1 | 1 (0.5%) | 0.14 |
+| 09-21 → 09-28 | 7.0 | 160 | 14.0% | 9 | 7 | 9 (5.6%) | 1.29 |
+| 09-28 → 10-05 (14:30) | 7.6 | 159 | 15.2% | 4 | 3 | 3 (1.9%) | 0.53 |
+| After: 10-05 (14:50) → 10-12 (14:00) | 7.0 | 131 | 63.7% | 10 | 7 | 8 (6.1%) | 1.44 |
+| After: 10-12 (14:00) → now (Claude provider) | 2.1 | 68 | 55.8% | 5 | 4 | 2 (2.9%) | 2.40 |
+| After: all, 10-05 (14:50) → now | 9.1 | 198 | 61.4% | 15 | 10 | 10 (5.1%) | 1.66 |
+
+Before (5 weeks): 30 exact-match opens in 35.6 days = 0.84/day, 26 compositions opened = 0.73/day. After: 1.66/day and 1.10/day. The pre-release weekly range is 0.14 to 1.71/day, so the first full week after (1.44) is inside it.
+
+**By open time** (each open checked against that venue's ideas generated in the 7 days before it):
+
+| Opened | Days | All Pear opens | Per day | Exact suggested | Same assets, any direction | All legs in suggested assets | ≥1 leg suggested | Users |
+|---|---|---|---|---|---|---|---|---|
+| 09-07 → 09-14 | 7.0 | 554 | 79 | 12 (2%) | 12 (2%) | 286 (52%) | 465 (84%) | 104 |
+| 09-14 → 09-21 | 7.0 | 518 | 74 | 1 (0%) | 1 (0%) | 245 (47%) | 404 (78%) | 103 |
+| 09-21 → 09-28 | 7.0 | 701 | 100 | 8 (1%) | 8 (1%) | 383 (55%) | 595 (85%) | 147 |
+| 09-28 → 10-05 14:50 | 7.6 | 683 | 90 | 5 (1%) | 25 (4%) | 383 (56%) | 583 (85%) | 158 |
+| After 10-05 14:50 → now | 9.1 | 782 | 86 | 15 (2%) | 61 (8%) | 453 (58%) | 691 (88%) | 127 |
+
+**Reading (my own, not a finding):** total opens per day did not rise (86 vs 74–100); exact-idea opens stay inside the weekly noise (0–12 a week before); the one movement is same-assets-either-direction, 25 → 61 opens (4% → 8%). It could be people using our assets with their own long/short split, or the ranked pool now concentrating on assets traders already pair, so overlap rises without influence. Nothing links an open to an idea (§8, exposure-based only), so causation is not shown. Re-run about 10-19 with the full 7-day follow-up (#1069). Script: session scratchpad `post-release.ts` plus two temp scripts, not committed.

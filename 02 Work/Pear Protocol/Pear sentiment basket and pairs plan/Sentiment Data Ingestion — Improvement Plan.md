@@ -482,3 +482,75 @@ Same runs only (`10-05T10:27` + the four 10-06 repeats, post Step 0, 85 calls pe
   - A1a: HL funding now + 7d avg, premium, OI size, OI vs volume, as an arm on `v2s`. HL funding history is point-in-time; premium and OI have no history, so those two can't be replayed for past days.
   - A1b: Coinglass L/S ratio + liquidations (crypto, daily set) and 1d/7d OI change. Coinglass HIP-3 coverage is still unknown.
 - **Next:** a different-day repeat run with the new logging on, a small replay script reading `inputs`, then A1a. +7d scores: 10-05 runs 12 Oct, repeats 13 Oct.
+
+## Update (2026-10-11): correction, #1095 merged
+
+- The 10-09 update above says PR [#1095](https://github.com/pear-protocol/agent-pear-v2/pull/1095) is "open, not merged". That is stale: it merged into `sentiment-enhancement` on 9 Oct 12:05 UTC (`bb4ea5e5`, checked with `gh` on 11 Oct). So the "rebase onto `sentiment-enhancement`" step for `feat/sentiment-positioning` isn't needed: the branch is still at `194bba51` with no commits, the same commit #1095 merged.
+- No live run with the new logging yet: `out/prompts.jsonl` doesn't exist in the playground (checked 11 Oct). Latest outputs are still the +3d score files.
+- +7d still pending: 10-05 runs 12 Oct 4:00 PM IST, repeats 13 Oct 12:30 PM IST.
+
+## Update (2026-10-11, later): different-day repeats with replay logging
+
+- 3 repeats of `old,new,v2s` started 18:28 UTC, using the 10-06 protocol (daily 17, 10 min apart, cache bypassed), from `feat/sentiment-positioning` @ `194bba51`. Ledger tag `repeat-1011`.
+- Run 1 (`2026-10-11T18:28:03.737Z`): 0 errors, $0.446.
+- **Replay logging works live:**
+  - Every OpenRouter request body is in `prompts.jsonl`, including the web summary request with its raw Exa results.
+  - Every call row has `inputs`.
+  - Runs from here on can be replayed for A1a and later arms.
+- Run 1 calls: `v2s` neutral on 9 of 17, inside the earlier noise band. Runs 2 and 3, and the noise read, are pending. Details: [[11th Oct 2026]].
+- **Scoring** (scheduled tasks, per runId, `FROM=2026-10-11T18:20 TO=2026-10-11T19:30`):
+  - +1d: 13 Oct
+  - +3d: 15 Oct
+  - +7d: 19 Oct
+  - This gives a second, different-day price path for the `v2s` vs `old` vs momentum question.
+- **Next:** noise read on the 3 runs, a small replay script that reads `inputs`, then A1a.
+
+## Update (2026-10-11, late): repeats stopped, A1a built on `feat/sentiment-hl-positioning`
+
+- The different-day repeats above were stopped after run 1, and their scoring tasks were deleted, because they re-test the same arms. D1 stays open. Run 1 only shows that replay logging works.
+- **A1a code** (uncommitted, branch off `sentiment-enhancement` @ `bb4ea5e5`):
+  - HL funding now and its 7d average, premium now and its 7d average, OI ($), and OI vs 24h volume.
+  - The lines are appended to MARKET DATA as "Positioning (Hyperliquid perp)", each with a reading computed in code. The prompt is unchanged.
+  - Playground arm `v2s+A1a`; the prod param defaults to off.
+  - Typecheck and specs pass; live HL smoke is good, including HIP-3.
+- **Correction (10-06 code facts):** `fundingHistory` includes hourly premium, so premium is replayable. Only OI is point-in-time.
+- **Next:**
+  - Paired runs `ARMS=v2s,v2s+A1a` (3 or more, per the reading rules), then score.
+  - A1b (Coinglass L/S ratio, liquidations, OI change) goes on as the next arm.
+- Details: [[11th Oct 2026]].
+
+
+## Update (2026-10-11, night): A1b built, first paired A1a/A1b runs
+
+- A1b (Coinglass: Binance L/S share for all accounts and top traders, cross-exchange liquidations, aggregated OI change; crypto only) is on `feat/sentiment-hl-positioning` with A1a, uncommitted. Arm `v2s+A1ab`.
+- Coinglass L/S doesn't support Hyperliquid, so it uses Binance. HIP-3 isn't on Coinglass.
+- 3 paired runs of `old,v2s,v2s+A1a,v2s+A1ab` (`18:44`, `18:57`, `19:11` UTC), $1.79, 203 of 204 calls.
+- **Calls:**
+  - Neither arm moves calls by more than run-to-run noise: A1a vs `v2s` 4-5 assets per run, against `v2s` vs itself 5-6. A1b vs A1a 2-3 on crypto.
+  - Both are a bit steadier (5 of 17 assets change across runs, against 8 for `v2s`), and neutral stays at 10-12 of 17.
+  - Only consistent shift: NEAR bullish in all A1 runs (OI +22% 7d).
+- **Accuracy:** pending. Scoring tasks fire 13, 15 and 19 Oct.
+- Keep/drop waits on those and on a second day, per the reading rules. Table in [[11th Oct 2026]].
+- **Picks (added later the same night):**
+  - The `v2s` family only commits on large caps with clear moves: NEAR, PLTR, AMZN long; ETH, SOL short.
+  - A1a dropped `v2s`'s one call against the trend (LIT short while +4.8pp). A1ab re-added BTC short, citing long liquidations and falling OI.
+  - `old` calls everything and is partly split by asset type (stocks long, crypto short).
+  - Table in [[11th Oct 2026]].
+
+## Update (2026-10-13): accuracy reads in for A1 +1d, 10-05 +7d and the 6 Oct repeats +7d
+
+- **A1 +1d:** `v2s+A1a` and `v2s+A1ab` are not distinguishable from `v2s`. Mean hit rate over 3 runs: `old` 53%, `v2s` 42%, A1a 25%, A1ab 38%, momentum 53%. On assets where all three arms called a direction, the calls were identical. Differences are neutral vs directional flips. 5 to 7 directional calls per run.
+- **10-05 at +7d:** every arm under 50%. `old` 44% (+0.60pp), `new` 39%, `v2` 20%, `v2s` 14% (n of 25 and 14), momentum 44%, always-bull 45%.
+- **6 Oct repeats at +7d:** `old` 31 to 47%, `new` 35 to 47% (overlap, `new` equals always-bull in 2 of 4 runs), `v2s` 20 to 29% with the worst return in every run at +3d and +7d (-6.98 to -4.60pp, on 5 to 8 calls). Momentum 47% beats every arm in every run.
+- **Where this leans:** the 2026-10-07 lean to "build on `v2s`" is not supported by the +3d and +7d reads. `v2s` is steadier between identical runs (0 flips) but not more accurate. Not a decision. Open: whether the `v2s` losses are mostly bullish calls in a falling week (not checked per asset).
+- **Next:** hold the A1 commit and PR until +3d (15 Oct) and +7d (19 Oct). The test needs more days and a rising or sideways week, always against momentum on the same assets.
+- Tables in [[13th Oct 2026]].
+
+## Update (2026-10-16): A1 +3d score in (`score-a1-plus3d.txt`, scored 15 Oct)
+
+- Runs of 11 Oct 18:44 / 18:57 / 19:11 UTC, scored per run. Mean of runs, all 17, +3d: `old` 59% / +2.84pp, `v2s` 58% / -0.34pp, `v2s+A1a` 40% / -3.12pp, `v2s+A1ab` 57% / -1.88pp, momentum 59% / +0.05pp, always-bull 12% / -4.80pp.
+- A1a vs `v2s` flips sign between runs (-34 / -28 / +7pp hit), same order as `v2s`'s own run-to-run spread. A1ab vs A1a mixed too. Not distinguishable from noise; A1a leans worse in 2 of 3 runs.
+- `v2s`-family arms call a direction on 5 to 7 of 17 per run. Stocks: 1 to 3 calls per run, 0 to 33% hit, uninformative.
+- Different from the 6 Oct path: there `v2s` was last at +3d (11%); here it is level with momentum on hit rate but still below `old` and momentum on return.
+- `old` (frozen control) is the best arm on return in this set.
+- +7d for these runs still pending (19 Oct). Notion pages "Asset sentiment enhancement: setup, versions and results" and "Sentiment: v2s upgrades log" were last edited 7 Oct and don't have the 9 to 15 Oct results.

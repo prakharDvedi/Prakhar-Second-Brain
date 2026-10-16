@@ -449,6 +449,34 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 
 **Evidence:** [[6th Oct 2026]], [[7th Oct 2026]], [[8th Oct 2026]], [[9th Oct 2026]], [[10th Oct 2026]], [[11th Oct 2026]], PR bodies #1085 to #1099.
 
+### 2026-10-11 → 2026-10-13 — Alert-noise and failure-cause fixes, SYMM retired from the daily run (catch-up entry from GitHub)
+
+**Status:** merged into `development`; #1105, #1112 (and #1101, #1099 earlier) also on `main`. As of 14 Oct, #1103, #1107, #1117 and #1119 are on `development` only (checked `main` contents on GitHub, not a release PR).
+
+- **Elfa 400 cause found:** #1105/#1106 put the response body in the alert; it showed `title` over the 120-character limit; #1107 caps the title and keeps the `topic=` marker. Personal narrative topics with long slugs were failing every reconcile. Closes the open question from #1098/#1099. Not run against live Elfa.
+- **Transcription:** #1100/#1101 logged the provider body; #1103 skips audio under 1 KB (prod alerts were all 5 to 27 byte payloads, each a paid STT call and a 500) and allow-lists the format. Sender of the payloads unknown.
+- **Alert noise:** #1104 untagged rejected Elfa webhooks and made a missing `sessionId` a 400 instead of a Prisma 500.
+- **SYMM:** #1111/#1112 dropped it from the daily basket run after pear-price-fetch#87 removed SYMMIO rows; broader retire PRs #1102/#1108 closed unmerged. Details in [[12th Oct 2026]].
+- **Chat missing message:** #1113 merged then reverted (#1116) on review findings, reworked as #1117 (400 on missing or non-string message, CTA guard). Behaviour change: empty message with no images is now a 400.
+- **X share:** #1119 retries the media upload once on 502/503/504.
+- #1109 merge-commit of `main` into `development` to unblock release PR #1094.
+- Basket gen and interest distiller moved back to Claude on 12 Oct (env change on the box, no PR): [[12th Oct 2026]].
+- #1118 (planner fallback → generalChat) closed 13 Oct with no linked PR; fix not verified: [[Planner Fallback Sent a Trade-Idea Request to generalChat After Auto-Task History]].
+
+**Evidence:** [[11th Oct 2026]], [[12th Oct 2026]], [[13th Oct 2026]], PR bodies #1099 to #1119.
+
+### 2026-10-14 → 2026-10-15: Tested Prime Agent against advanced mode by replaying a real session *(finished, repo untouched)*
+
+**Status:** study only. Nothing committed, nothing merged. Decision: drop Prime Agent as a runtime for now. Full log: [[Prime Agent Harness testing]].
+
+- Coding trial on the #1096 task (Claude Code against Prime Agent, same model): five runs, each touched only the two tokenomist files while the real PR touched five. Diffs not read.
+- Replayed turns 2 to 14 of a real production session through Prime Agent with the production model, prompt and recorded tool results. Final setup against production: 2,762 s against 1,403 s, 1.87M input against 1.97M, 136k output against 95k.
+- Input tokens went from 5.7M to below production over the runs. Time did not, because Prime writes about 1.4x the output. Quality ended about level with production, weaker on the last two turns.
+- Side findings in production, none fixed: mislabeled "% margin" column, advanced cost under recorded in Langfuse, a 25 ETH gap in a closed trade record.
+
+**Evidence:** [[14th Oct 2026]], [[15th Oct 2026]], `C:\scratch\pear-replay\REPORT.md`.
+
+
 ---
 
 ## Recurring Engineering Themes
