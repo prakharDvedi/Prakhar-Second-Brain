@@ -477,6 +477,28 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 **Evidence:** [[14th Oct 2026]], [[15th Oct 2026]], `C:\scratch\pear-replay\REPORT.md`.
 
 
+### 2026-10-14 → 2026-10-17 — Confirm-drift alert noise, and the token-unlock fix that hid every upcoming unlock (catch-up entry from GitHub)
+
+**Status:** merged into `development`; not on `main` as of 18 Oct (not rechecked).
+
+- #1121 confirm-drift refusals (mark moved past the limit before Confirm, no order placed) log at `warn` instead of paging Discord; stale-price and no-mark aborts stay `error`.
+- #1122 scheduled token unlocks show as `SCHEDULED` instead of being hidden: [[Token-Unlock Amounts Shown as Confirmed Facts]] (Update 2026-10-17). Replayed on XPL and KAITO; awareness eval not run.
+- Reviewed and approved GPSxtreme's #1120 with one non-blocking wording comment on cross vs isolated margin mode.
+
+**Evidence:** [[14th Oct 2026]], [[15th Oct 2026]], [[17th Oct 2026]], PR bodies #1120 to #1122.
+
+### 2026-09-02 → 2026-10-05 — Merged PRs missing from earlier entries (catch-up entry from GitHub, added 18 Oct)
+
+**Status:** merged; `main` vs `development` noted per PR in each daily log.
+
+- **Signals:** #676/#679 evidence timing observability ([[3rd Sep 2026]]); #680/#684 `readHlContext` over-gating fix for a `measurement_unavailable` miss ([[7th Sep 2026]]); #792/#793 stop paging on expected fail-closed evidence reasons ([[17th Sep 2026]]); #1020 signal compose falls back to OpenRouter on Cerebras failure ([[28th Sep 2026]]).
+- **Trade execution:** #681 guard against silently opening a new position for an unmergeable leg; #683 pre-fetched account list for multi-account users; #693 account-snapshot authority scoped to its own account; #697 dropped per-slice `fills[]` from `get_twap_orders` (about 3.44M-token request from one account); #1019 one ambiguous ticker no longer fails a whole `hyperliquid_price` batch; #812 set-leverage concurrency cap and 429 retry (root cause per the PR is the nginx gateway, not Hyperliquid).
+- **Rate limits and alerts:** #790/#814 Elfa client throttled to about 140/min; #1016 OI cron throttled for Coinglass 429s; #817 mentions scan failure downgraded to `warn`.
+- **Other:** #1045/#1050 tweet labeling retries text-only on a dead image URL; #1061 hotfix moving `gpt-6-luna` nodes to `deepseek-v4.1-flash`; #1073 chat session rename; #1074 vault answers link to the official site; #716 no literal tool names in output; #821/#1015/#1035 Hetzner docs and a back-merge.
+- Closed unmerged with no reason in the PR: #795, #816, #819, #1014. #795 (heartbeat tasks going silent after run 1) may still be an open problem; not checked.
+
+**Evidence:** [[3rd Sep 2026]], [[7th Sep 2026]], [[9th Sep 2026]], [[17th Sep 2026]], [[18th Sep 2026]], [[21st Sep 2026]], [[22nd Sep 2026]], [[28th Sep 2026]], [[30th Sep 2026]], [[5th Oct 2026]], PR bodies.
+
 ---
 
 ## Recurring Engineering Themes
