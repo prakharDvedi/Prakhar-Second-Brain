@@ -9,6 +9,9 @@
 ## Projects
 [[Status|Medbud Status]]
 
+## Creator space
+[[Illustrations]]
+
 ## Self
 [[My Identity]]
 [[Goals]]

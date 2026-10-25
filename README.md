@@ -17,6 +17,7 @@ Start here: [00 Home/Home.md](00%20Home/Home.md) links out to Current Focus, wor
 | `06 People` | Notes on people |
 | `07 Reviews` | Weekly and monthly reviews |
 | `08 Writing` | Writing drafts/output |
+| `09 Illustrations` | Creator space: films, animations and illustrations made in code, one folder per project (see [Illustrations](09%20Illustrations/Illustrations.md)) |
 | `99 Inbox` | Unsorted daily capture |
 | `Templates` | Note templates (daily log, incident, decision, weekly/monthly review) |
 
