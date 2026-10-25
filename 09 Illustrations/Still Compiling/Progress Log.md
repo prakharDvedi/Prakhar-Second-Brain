@@ -76,3 +76,7 @@ dated entries, newest at the bottom. don't rewrite old entries, add a correction
 - Claude Animation Base: `npm ci --ignore-scripts`, 46 packages, 72 MB, local to its folder. test render of the demo at 3 s and 6 s worked (Clawd, moon, hills)
 - verified unchanged after: system Python 3.10 path, `python3` still the Store stub, same 6 uv Pythons, Lemo venv imports, shared browser cache folders, Lemo-Opuscar still renders
 - still not installed on purpose: voice tier, music tier, instrument samples
+
+### 12. Handover prep
+- checked that every path these notes reference exists (code, renders, library docs, engine, venv shim, skills): all present
+- added Hera easter eggs as an idea with candidate spots, wrote [[Handover Prompt]] for the next session

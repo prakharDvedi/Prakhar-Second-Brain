@@ -50,6 +50,11 @@ dated, newest at the bottom. "confirmed" means i saw it or approved it. "not che
 - the motif: low D2 alone in the dark when the cursor stretches, then A4 → F#4 → D5 → C#5, ending on C#5 on purpose so it feels unfinished
 - status: works, i said "sound works". upgrading to real piano is still open
 
+### Hera as an easter egg
+- my cat character [[Hera/00 Index|Hera]] gets hidden cameos in the film. where exactly is still open (candidates in [[Next Steps]])
+- she gets redrawn in the film's Urban Sketch style, same colours, so she doesn't look pasted in from another kit
+- status: idea confirmed by me, placement not decided
+
 ### Code lives outside the vault
 - project code and renders are in `C:\Users\prakh\still-compiling\`, not in the vault
 - why: the vault is a git repo, renders and fonts are binary

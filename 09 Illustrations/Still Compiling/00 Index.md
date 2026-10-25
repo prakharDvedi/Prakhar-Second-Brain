@@ -31,6 +31,7 @@ coming of age film, not a linkedin reel. target length 98 s, 13 scenes, 1080p, 2
 - [[Progress Log]] : what was done on 2026-10-26, step by step, including what broke
 - [[Tools and Setup]] : installed tools, paths, render commands, Windows gotchas
 - [[Next Steps]] : what to do next, in order
+- [[Handover Prompt]] : paste this into a new session to continue the film
 
 ## Related
 [[Illustrations]] · [[My Work at Pear Protocol]]
