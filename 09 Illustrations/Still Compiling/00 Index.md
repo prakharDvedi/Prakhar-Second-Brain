@@ -2,7 +2,7 @@
 
 a short autobiographical animated film about my college to engineer journey. 2023 me walks into college, explores everything, makes friends, falls for someone, it doesn't work out, i turn inward and get obsessed with building, fail a lot, get more serious, land a role at Pear Protocol working on AI + crypto trading systems, and realise this is only the beginning.
 
-coming of age film, not a linkedin reel. target length 98 s, 13 scenes, 1080p, 24 fps.
+coming of age film, not a linkedin reel. target length 101 s (was 98 s), 13 scenes, 1080p, 24 fps.
 
 ## Status (2026-10-26)
 
@@ -10,6 +10,9 @@ coming of age film, not a linkedin reel. target length 98 s, 13 scenes, 1080p, 2
 - art style: **locked**, Urban Sketch · Pen & Wash (Lemo-Opuscar library). see [[Decisions]]
 - style still of scene 02: done
 - opening test (scenes 01 to 02, 7.5 s) with sound: done
+- character sheet P23 / P26: approved (`C:\Users\prakh\still-compiling\chars\character-sheet-v1.jpg`)
+- master timeline: done (`C:\Users\prakh\still-compiling\timeline.js`), 101 s
+- transition test 03 → 04 (Lemo push into the laptop, Hyperframes terminal, sound): done, `C:\Users\prakh\still-compiling\tests\t0304\out\transition-03-04-test.mp4`
 - full film: **not started**. i stopped the agent before it began, on purpose
 
 ## Where things live

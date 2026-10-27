@@ -7,6 +7,7 @@
 ## Open Initiatives
 
 - [[Agent Pear Revamp]] — Oracle/DEMI harness research and current direction for the AP redesign
+- [[Agent Pear Learning Map]] — what to learn for AP, mapped from the repo and vault (2026-10-11)
 - [[Prime Agent Harness testing]] — replay test of Prime Agent against advanced mode (2026-10-14 to 15), decision: drop for now
 - Pear sentiment basket and pairs plan — [[Better Trading]] (repo analysis + plan) and [[Pear Trader Asset Familiarity — Data Findings]] (BE trade-data numbers)
 

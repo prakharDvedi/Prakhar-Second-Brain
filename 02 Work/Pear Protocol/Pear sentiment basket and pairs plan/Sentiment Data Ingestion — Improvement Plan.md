@@ -554,3 +554,28 @@ Same runs only (`10-05T10:27` + the four 10-06 repeats, post Step 0, 85 calls pe
 - Different from the 6 Oct path: there `v2s` was last at +3d (11%); here it is level with momentum on hit rate but still below `old` and momentum on return.
 - `old` (frozen control) is the best arm on return in this set.
 - +7d for these runs still pending (19 Oct). Notion pages "Asset sentiment enhancement: setup, versions and results" and "Sentiment: v2s upgrades log" were last edited 7 Oct and don't have the 9 to 15 Oct results.
+
+## Update (2026-10-20): A1 +7d score in (`score-a1-plus7d.txt`, scored 19 Oct)
+
+- Same three 11 Oct runs, 17 assets (10 crypto, 7 stocks). Mean of runs at +7d, all assets: `old` 64% / +4.11pp, `v2s` 69% / -0.17pp, `v2s+A1a` 55% / -4.30pp, `v2s+A1ab` 69% / -1.88pp, momentum 65% / +0.69pp, always-bull 18% / -7.58pp. The runs share one day's inputs and one price path, so the mean is a display average, not three samples.
+- `v2s+A1a`: avg return below momentum in all 3 runs and below `v2s` in 2 of 3. `v2s+A1ab`: hit rate at or above momentum in 2 of 3, avg return below momentum in all 3, beats `v2s` in 1 of 3. Neither beats the arm it stacks on.
+- Neutral rate unchanged by the data feeds: `v2s` 10–11 of 17, A1a 10–11, A1ab 11–12. Scored n is 5–7 per cell (4–6 crypto), so one asset moves a run by 14–25pp.
+- `old` still leads every `v2s`-family arm on return, but scores all 17 assets with no abstentions, so it is not like-for-like.
+- The market fell (always-bull -7.6pp at +7d), which favours bearish or neutral arms; +1d/+3d/+7d re-read the same calls, so they are not three tests.
+- The score file's own reading is "DROP" for both A1a and A1ab. Read as no evidence of benefit, not proof of harm. That is the file's reading and mine from the numbers; no decision is recorded here.
+- A1 code (HL funding/premium/OI, Coinglass L/S, liquidations, OI change) is still uncommitted in the `agent-pear-v2-sentiment-measure` worktree (checked 20 Oct: modified `market-data.service.ts`, `sentiment-cron.service.ts`, `run.ts`, plus untracked `labeler-tag-check.ts`). No PR for it.
+
+## Update (2026-10-21) #1161 Claude replay result
+
+- **What ran:** the `v2s` inputs logged for the 11 Oct runs (18:28, 18:44, 18:57, 19:11; 17 assets each) replayed through `claude-opus-5-5` at medium effort via the Claude CLI (no tools, `--json-schema`, extractor hop dropped) on the Hetzner box, with the `v2s` system prompt and a loose one. Also flash + loose prompt through OpenRouter (extractor kept). 204 calls, 0 failures. The "next 7 days" line was stripped from the user message for the loose cells only.
+- **Result (paired, directional only, per set, never pooled):** `claude+loose` beat neither flash `v2s` (hit rate and return together, 0 of 4 sets at every horizon) nor `base:momentum` (0 of 4). Its neutral/mixed count was 10, 10, 9, 12 of 17, so inside the 12 cap. `claude+v2s` called 15 to 16 of 17 neutral (1 to 2 directional), not scoreable. `claude+loose` beat `flash+loose` on return in all 4 sets. Best LLM arm was still flash `v2s`; momentum beat everything.
+- **Cost / speed:** Claude about $0.038 per call API-equivalent (a plan login, so usage and not an invoice), 2 turns, p50 about 8 to 9s; flash+loose about $0.001, p50 31s.
+- **Caveats:** all 4 sets share one falling-week price path; 5 to 8 directional calls per cell, so one asset moves a cell by 12 to 25pp; the 18:28 and 18:44 sets entered in the same 1h candle so their scores can match; flash+loose was run twice by mistake and deduped (first row kept). A direction, not a verdict.
+- **Outcome:** [comment on #1161](https://github.com/pear-protocol/agent-pear-v2/issues/1161#issuecomment-6314105870), issue closed as completed, M3 (agentic Claude) not built from this.
+- **State:** code (replay script, loose prompt, `score.ts` `CALLS`/`ARMS`/`BY_RUN` options) is uncommitted on `feat/sentiment-claude-replay`, worktree `agent-pear-v2-sentiment-claude`, no PR. VPS dir `~/pear/sentiment-claude-replay/` (280 MB, pinned CLI 2.1.306 copy, scripts, data) is left for me to delete. Two interactive `claude` sessions on `pts/0` were closed with my OK before the run.
+- **Not updated:** #1052 (last comment 2026-10-13; it has no A1 +3d/+7d, no #1161 result, no 10-21 decision). The #1052 catalog tick for C1 is not done.
+
+
+## Update 22nd Oct 2026 — Elfa plan (line ~220 "Grow plan" is superseded)
+
+Live `GET /v2/key-status` on the `ap-prod` key shows `tier: "enterprise"`, 10M monthly credit limit, 150 RPM, scopes include the v3 set (events, storylines, calls, call-book, mindshare, people, entities, chat). Monthly usage 225,604 credits at the time. Earlier "Grow, 40k" claim was true when written, not today. Endpoint-by-endpoint plan check: [[Elfa Endpoints and Plan Gating]]. Evidence: probe run 22 Oct 2026, docs.elfa.ai/get-started/pricing.

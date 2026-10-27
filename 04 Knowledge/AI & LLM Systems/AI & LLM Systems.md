@@ -14,6 +14,10 @@ last_reviewed: 2026-08-30
 - [[LLM Observability & Evaluation]]
 - [[04 Knowledge/AI & LLM Systems/Model Routing Under Provider Instability|Model Routing Under Provider Instability]]
 
+## Reading Notes
+
+- [[Prime Agent Blog Explained]] — plain-language notes on Prime Intellect's self-improving RLM agent post; see also [[Prime Agent Harness testing]]
+
 ## Safety Surface
 
 - [[Prompt Injection & Safety Boundaries]]

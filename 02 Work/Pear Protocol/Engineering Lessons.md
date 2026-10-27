@@ -608,3 +608,39 @@ Merging a PR whose base is another feature branch only updates that feature bran
 **Why it matters:** the PR shows as merged, so the miss is invisible unless the target branch is checked.
 
 **Evidence:** [[5th Oct 2026#PR / merge mix-up (corrected)]], `git merge-base --is-ancestor` against `origin/sentiment-enhancement`.
+
+---
+
+### A thrown tool error is not a tool result, so a summary built from results omits failures
+
+A ground-truth block for the composer was built only from `toolResults`, so a read that threw never appeared in it and the model's "nothing found" prose won.
+
+**Context:** in the AI SDK a thrown tool is recorded as a `tool-error` content part, not a `toolResults` entry. #1148 found `summarizeToolCalls` reading only `toolResults`, so after every account read errored the user was told there was no recorded HYPE short. Empty feeds had the same shape (an empty unlock feed became "no significant unlocks").
+
+**Why it matters:** an absent result and an empty result look the same to a reader, and the agent states either as a negative fact. Any code that summarizes tool activity has to list failures and empties as unavailable explicitly.
+
+**Evidence:** [[20th Oct 2026]], PR #1148 (a replay of the original trace was not run).
+
+---
+
+### In zod v4 an object key typed z.unknown() or z.custom() is required unless marked optional
+
+A schema meant to pass a field through untouched rejected every request that left the field out.
+
+**Context:** for #1159 the `surface` and partner `query` fields were left as `z.unknown()` / `z.custom<Surface>()` so the controller's own checks kept their error messages. zod v4 treats those keys as required, so a missing `surface` on `/chat/execute` and a missing body on the partner route came back as a 400 ("expected nonoptional, received undefined"). The validation specs caught it before commit. The fix was `.optional()`, the same as `runtimeContext` in #1154.
+
+**Why it matters:** a pass-through field reads as "accept anything", so the new 400 looks impossible and would only show up when a real caller omits the field. A spec that sends a missing body or a body without that field is what catches it.
+
+**Evidence:** [[21st Oct 2026]], PR #1159 (failing jest output in that session).
+
+---
+
+### An audit row that says unchecked input reaches X is a lead, not a bug, until the path is traced
+
+Of the 19 rows in the #1158 input audit, several described a real gap that turned out to have no failure: the malformed value already ended in a correct refusal.
+
+**Context:** a repeated query key on `verifyCode` and the x-link routes is joined into a Redis key that does not exist, giving the existing invalid answer. A non-string tg-grant `tradeAccountId` fails an `===` match and returns the existing `unknown_account` 400. The trade-ticket Redis parses (rated money-path risk) already return null on a bad parse, and the single-use plan token bound on the server means a malformed ticket can only produce an error, not a different trade. A schema copy of `TradeTicket` there would have added a failure mode (valid tickets rejected if the schema lagged the type). The rows that did crash (onboarding `value.trim()`, the Elfa webhook `title.slice`) were confirmed by a spec failing on the old code.
+
+**Why it matters:** fixing every row adds 400s that can break sloppy but working clients, plus schemas that need dual maintenance, for no reliability gain. Trace each row to where the value is used and fix only the ones that crash, persist bad data, or change an action.
+
+**Evidence:** [[21st Oct 2026]], #1158 Decision column, PRs #1159 and #1160.

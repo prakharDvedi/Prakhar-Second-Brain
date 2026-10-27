@@ -59,3 +59,36 @@ dated, newest at the bottom. "confirmed" means i saw it or approved it. "not che
 - project code and renders are in `C:\Users\prakh\still-compiling\`, not in the vault
 - why: the vault is a git repo, renders and fonts are binary
 - status: agent's call, not checked by me
+
+### Protagonist look (P23 / P26)
+- black medium wavy hair, half-rim glasses, 6 ft and lean, fair wheatish skin, no beard, normal shirts and trousers, black analog watch. cartoon, doesn't need to be exact
+- status: confirmed (my answer, 2026-10-26)
+- drawn with the Urban Sketch figure rig, face blank like the rest of the style, glasses inked on the blank face so they're the one facial feature
+- shirt colours: P23 white half-sleeve shirt + beige trousers, P26 muted navy full-sleeve shirt + charcoal trousers. picked to stay out of the film's colour grammar (no amber, cyan or pear green on him). status: confirmed, i approved the sheet with these colours (2026-10-26)
+- character work uses its own copy of the engine in `chars\` with two small fixes (shorter neck tube, shirt over trouser tops). status: agent's call, not checked
+
+### Tempo grid: 120 bpm, 4/4
+- every whole second is a beat, a bar is 2 s, slow sections felt in half time (60). keeps every storyboard scene time exactly on the grid, no retiming needed
+- the opening test's motif notes were 0.65 s apart. on this grid they'd move to 0.5 or 0.75 s when the score is redone
+- rejected: around 90 bpm to match the opening test's motif (half the scene boundaries would fall between beats)
+- status: agent's call, not checked
+
+### Film length 101 s
+- scene 13 runs to 101 s so the end title holds 4 s (library rule). status: confirmed, my call 2026-10-26
+
+### How tools join (from the 03 → 04 test)
+- every tool renders at 24 fps. Lemo renders at 96 fps and is blended down for motion blur
+- a seam is a matched frame: the outgoing shot ends exactly on the incoming shot's first frame (same layout, font, colours, cursor phase), and the camera comes to rest 0.1 s before the cut
+- the cursor blinks on the film clock everywhere, so its phase matches across any cut
+- fonts are loaded from the project's own files in every tool, never a bundled or system font
+- for now clips are joined through RGB with each clip's own colour matrix. lossless intermediates are the planned fix
+- status: confirmed, i watched the test and liked it (2026-10-26)
+
+### Creative calls (2026-10-26, mine)
+- gate arch reads **IIIT Bhopal** instead of the "COLLEGE OF ENGINEERING" placeholder
+- music: keep the synthesised score (felt piano and the rest made in code), no sample download
+- **no voiceover** for now
+- page layout: follow the treatment, **one continuous page** the camera travels across
+- Hera: the agent places her, small and easy to miss, in a few of the candidate spots
+- i liked the 03 → 04 transition and the design, so the seam method in "How tools join" is approved
+- status: confirmed

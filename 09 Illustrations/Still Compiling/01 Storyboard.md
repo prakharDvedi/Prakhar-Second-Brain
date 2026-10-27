@@ -1,6 +1,6 @@
 # Storyboard
 
-written 2026-10-26. 13 scenes, 98 s. P23 = 2023 me, P26 = present me.
+written 2026-10-26. 13 scenes, 98 s (101 s since 2026-10-26, scene 13 runs 3 s longer so the end title holds 4 s). P23 = 2023 me, P26 = present me.
 
 the storyboard was written before the style was locked, so the "brief" lines were first meant as image-model prompts. they now work as scene briefs for code. where the storyboard says "cinematic 3D" or similar, the locked style wins: Urban Sketch · Pen & Wash (see [[Decisions]]). skill fields below use the corrected tool roles.
 
@@ -153,7 +153,7 @@ the storyboard was written before the style was locked, so the "brief" lines wer
 - **transition:** P26 walks out of frame, cut to the room where the same backpack is set down
 - **tools:** Lemo-Opuscar, OneTake
 
-### 13 · `> next` · 1:28 to 1:38
+### 13 · `> next` · 1:28 to 1:41
 - **purpose:** this is only the beginning
 - **opening frame:** still life of the hostel room, emptier. laptop closed, old football boots, the football, corkboard of memories (polaroids from 03, fest wristband, a torn ticket), a suitcase by the door
 - **action:** P26 picks up the suitcase, looks at the room one beat, switches off the light, leaves. door closes. camera stays. long hold. the closed laptop's LED glows and wakes
@@ -167,9 +167,10 @@ the storyboard was written before the style was locked, so the "brief" lines wer
 
 ## A. Character consistency
 
-- **protagonist, same person throughout.** placeholder traits until i give my real look: South Asian, early 20s, medium brown skin, dark slightly wavy hair, thin rectangular glasses, lean, plain tees and overshirts in olive, navy, off white. always the same black analog watch
+- **protagonist, same person throughout.** my real look (given 2026-10-26): black medium wavy hair, half-rim glasses, 6 ft and lean, fair wheatish skin, no beard, normal shirts and trousers, black analog watch. it's a cartoon, it doesn't have to be exact. at 6 ft he stands about a head over most people in a crowd
 - **P23:** hair longer and messy, slouchier, fidgety hands, oversized new navy backpack, wide eyed
 - **P26:** hair shorter and kept, upright and relaxed, slower movements, same backpack now faded with patches, sometimes a lanyard, calmer eyes
+- shirt colours on the sheet (P23 white half-sleeve shirt + beige trousers, P26 muted navy full-sleeve shirt + charcoal trousers) are an agent proposal, not confirmed. sheet: `C:\Users\prakh\still-compiling\chars\character-sheet-v1.jpg`
 - face, glasses and watch identical between P23 and P26
 - **her:** face never fully shown, shoulder length dark hair, mustard yellow scarf or cardigan. never shown after scene 05
 - **friends:** 3 to 4 recurring silhouettes, one signature item each (red cap, headphones round the neck, jersey #10, tote bag)
@@ -198,7 +199,7 @@ cartoonish or chibi, supercars, money, coins, rockets, SUCCESS text, trophies, c
 | 1:04 to 1:13 | full theme: piano + pulse + low strings | data hum, order flow ticks |
 | 1:13 to 1:21 | theme, stereo split left/right merging to centre | professor (L), Slack (R) |
 | 1:21 to 1:28 | 4 note motif reversed | birds settling, footsteps |
-| 1:28 to 1:38 | fade, silence, one unresolved chord on the title | door click, one cursor tick |
+| 1:28 to 1:41 | fade, silence, one unresolved chord on the title | door click, one cursor tick |
 
 note: the Urban Sketch style's own sound palette suggests jazz waltz or solo nylon guitar families. the felt piano motif used in the opening test is our choice, it works, keep it unless i say otherwise.
 

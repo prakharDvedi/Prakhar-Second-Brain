@@ -80,3 +80,48 @@ dated entries, newest at the bottom. don't rewrite old entries, add a correction
 ### 12. Handover prep
 - checked that every path these notes reference exists (code, renders, library docs, engine, venv shim, skills): all present
 - added Hera easter eggs as an idea with candidate spots, wrote [[Handover Prompt]] for the next session
+
+### 13. Character sheet v1 (P23 / P26)
+- picked the project up with /movie. check.sh: everything OK, only voice tier, music tier and instrument samples MISSING (skipped on purpose)
+- gave my real look: black medium wavy hair, half-rim glasses, 6 ft lean, fair wheatish skin, normal shirts and trousers, black analog watch, no beard. updated [[01 Storyboard]] section A
+- new folder `C:\Users\prakh\still-compiling\chars\` (own copy of `engine.js`, `poses.js`, fonts). `sheet.js` draws a 2560×1440 sheet with the real Urban Sketch figure rig: P23 and P26 each in front, 3/4, side, back and one walking pose (P23 walking in, P26 walking out), plus palette swatches and handwritten notes
+- added on top of the rig: half-rim glasses (heavy top bar, hairline bottom, temple in profile, hidden from behind), wavy hair marks (P23 messier, bigger hair mass, a lock on the forehead), black watch on the left wrist, backpack (full from behind, slab in profile, straps from the front, P26 faded with a patch)
+- two small changes in the chars copy of `engine.js` (not in clip/ or sample/): the neck tube is shorter so its ink no longer draws over the chin and the back of the head, and `look.shirtOut` draws the shirt over the trouser tops so the hips stop showing two round caps
+- fixed after the first render: row labels overlapped the first figures (moved figures right), P26 navy read as grey (more saturated), profile backpack floated off the back
+- output: `chars\character-sheet-v1.jpg`. i checked it by eye at full size plus an enlarged crop of all heads (glasses read as half-rim in front, 3/4 and side)
+- known flaws still in v1: P26's long sleeves show rounded shoulder caps that look a bit like pads, and the side-view feet draw as a stack of short lines (both come from the rig)
+- shirt colours are the agent's proposal, not confirmed. not a git repo yet, didn't run git init (no answer on that)
+
+### 14. Character sheet approved, master timeline
+- i approved character sheet v1, colours included
+- wrote `C:\Users\prakh\still-compiling\timeline.js`, the one source for picture, sound and checks: tempo grid, all 13 scene windows from [[01 Storyboard]] (unchanged), per scene the allowed amount of amber / cyan / pear green, music state, ambience bed and tools, 65 named hit points (`s07_fail`, `s12_pass` and so on), where the cursor appears, and the two music-free windows (36 to 42, 59 to 64)
+- `check-timeline.mjs` checks it (scenes join with no gaps and end at 98 s, every hit sits inside its own scene and on the half-beat grid, cursor scenes exist, silences don't overlap scenes with music, plus a small self-test) and writes `timeline.json` for the Python mixer. runs clean
+- the check warns that the end title only holds 1 s (97 to 98 s), the library asks for at least 4 s. left for me to decide
+- added `package.json` with `"type": "module"` in the project root so Node reads `timeline.js` as a module without a warning
+- the render tools only mount the page's own folder, so pages that import `timeline.js` have to live in the project root (fits the one continuous page plan)
+- hit times are the agent's placement of the storyboard actions on the grid, not checked by me
+- broke and fixed: a sed edit uppercased the Windows paths in these notes (`\U` in GNU sed), fixed by hand
+
+### 15. Local git repo, transition check
+- `git init` in `C:\Users\prakh\still-compiling\` (i said yes). `.gitignore` keeps `out/`, `stills/`, `node_modules/`, `*.mp4`, `*.wav` out. nothing committed, nothing pushed
+- checked the tools for joining scenes: OneTake's `render.py` takes `--fps 24` (its defaults are 30 for drafts and 60 for finals), Hyperframes renders at `--fps 24`, Lemo-Opuscar renders at 24. so all three can render at the film's frame rate, no conversion needed. not tried yet, only read in their code and docs
+- the title hold question is still open
+
+### 16. Film is 101 s, transition test 03 → 04
+- i chose to extend the film so the end title holds 4 s. `timeline.js`: scene 13 now runs 88 to 101, `DUR = 101`. the check runs clean with no warning. storyboard and index updated
+- built the transition test i asked for in `C:\Users\prakh\still-compiling\tests\t0304\` (film 18.0 to 23.5 s, 5.5 s), one command: `sh build.sh`
+  - Lemo half (`lemo/scene.js`, 18.0 to 21.0): tail of scene 03 on the corkboard, two earlier polaroids (football, chai cups), the camera drifts to an empty spot, the last card draws itself in stroke order (frame, photo, hostel block, window grid, the lit window, laptop, P23's head), the night wash blooms after the ink, the lamp-lit window comes on, then a push into the laptop screen from 1.35× to 160× (eased in log space, a slight roll so the screen ends square). card ink is made once in world space and mapped through the camera, so nothing boils while zooming, with a width cap so lines stay fineliner thin up close
+  - rendered at 96 fps and blended to 24 fps (tmix of 2, every 4th frame) for a real 180° shutter blur on the push
+  - Hyperframes half (`hf/index.html`, 21.0 to 23.5): the same screen, `> index.html` typed, Enter, then `<h1>hello world</h1>` with the tags in cyan (the first cyan in the film, as the palette rule says for 04). cursor blink uses the film clock on both sides so the phase matches across the cut. lint and check clean, one expected warning (the test ends right after the last line)
+  - sound (`mix.py`): fest crowd bleed and brushes on the 120 bpm grid under 03, pen strokes and a wet brush for the card, a soft click when the screen lights, an air rush on the push that stops at the cut, the hostel fan comes in 0.4 s before the cut (J-cut), keys, a deeper Enter, cursor ticks on 04's blinks
+- broke and fixed on the way:
+  - Hyperframes drew the terminal in Times, its bundled JetBrains Mono didn't apply. fixed with an `@font-face` pointing at the project's own TTF. after that the `>` lands on exactly the same pixels on both sides of the cut
+  - the push was still moving at the cut (about 10 px jump). now it lands 0.1 s early so both sides are at rest
+  - the two clips use different colour matrices and ranges (Lemo full range bt601 from JPEG screenshots, Hyperframes tv range bt709). the first join shifted the HF side 4 to 5 levels toward blue. joining through RGB brought it down to about 2 levels in blue on the near-black screen. fully fixing it needs lossless intermediates (added to [[Next Steps]])
+  - first master peaked at −1.0 dB. lowered the limiter ceiling relative to the RMS and the bass bleed: −13.7 LUFS, true peak −1.6 dB, low end −3.9 dB vs mids
+- checked: frame strip across the cut (frames 62 to 77), pixel diff of the two frames at the seam, colour measured either side, ffprobe 5.5 s with video (132 frames) and audio, no black frames
+- only measured, not watched or heard: i haven't seen it play at full speed or heard it. it's waiting on me
+
+### 17. Decisions batch
+- i watched the transition test and liked the transition and the design
+- decided: gate says IIIT Bhopal, synthesised music, no voiceover for now, one continuous page, the agent places Hera. logged in [[Decisions]]

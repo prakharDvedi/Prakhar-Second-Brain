@@ -35,4 +35,5 @@ Navigation only — open the note for the full write-up.
 ## Infrastructure / Data
 
 - [[Token-Unlock Amounts Shown as Confirmed Facts]] — projected token-unlock ceilings were shown to users as confirmed amounts. Resolved.
+- [[Generated Baskets Lost on Net-Long Semis Beta, Not Asset Selection]] — `made_baskets` since 09-22 lost −1.65% to now, but sector factor −2.30% vs selection +0.65%; no edge at any fixed horizon or provider era. **Diagnosed — no fix yet.** Plan: [[Basket Quality — Staged Improvement Plan]].
 - [[One Service URL Fed Two Different Services, Nulling Basket Stats]] — one `STATS_BASE_URL` fed both `/categories` and `/stats/basket` on different services; repointing it 404'd basket-stats enrichment and nulled the columns behind a misleading `No baskets generated` alert. Resolved.

@@ -499,6 +499,52 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 
 **Evidence:** [[3rd Sep 2026]], [[7th Sep 2026]], [[9th Sep 2026]], [[17th Sep 2026]], [[18th Sep 2026]], [[21st Sep 2026]], [[22nd Sep 2026]], [[28th Sep 2026]], [[30th Sep 2026]], [[5th Oct 2026]], PR bodies.
 
+### 2026-10-05 → 2026-10-14 — Familiar-asset ideas shipped to prod, and what the first reads showed (catch-up entry, added 20 Oct from the plan note)
+
+**Status:** shipped. #1078 merged to `development` and release #1082 to `main` on 2026-10-05; ranking timer installed on the Hetzner box the same day. Whether traders open more of the ideas is **not shown**. Full numbers and caveats: [[Familiar-Asset Ranking — Final Plan]] §11.14–§11.21.
+
+- **What it does:** a daily job ranks assets 65% by current holders and 35% by 90-day openers (top 20 usable); the HL and Lighter generation passes take their candidate pool from that list instead of the category pool (#1065, #1066, #1068). The pair-vs-basket selector (#1067) was held back by the user and #1076 closed.
+- **Generation changed as intended:** familiar share of stored legs 15% before to 64–72% after; ideas with at least one familiar leg 43% to 74–82%.
+- **Adoption did not clearly move:** unique compositions opened within follow-up 1.9% (3 of 159) before, 6.1% (8 of 131) in the first full week after, inside a pre-release weekly range of 0.5% to 5.6% on 1–7 users. All Pear opens per day 86 after against 74–100 before. Same-assets-either-direction opens rose from 4% to 8%, cause unknown. Nothing links an open to an idea, so causation is not shown.
+- **Caveats:** follow-ups were 1–7 days, the provider switched back to Claude on 12 Oct partway through the window, and the full 7-day read (#1069) was due about 19 Oct and is not in the vault yet.
+- **Evidence:** [[1st Oct 2026]], [[Familiar-Asset Ranking — Final Plan]], #1070, #1071, #1077, #1078, #1082.
+
+### 2026-10-19 → 2026-10-20 — Adjust sizing, false refusals, failed-source honesty, alert floods (catch-up entry from GitHub, added 20 Oct)
+
+**Status:** all merged to `development`. On `main` via release #1151 (20 Oct 07:12 UTC): #1139, #1141, #1143–#1149. #1152 and #1153 are on `development` only.
+
+- **Trade execution:** #1139 margin-sized `adjust_position` (margin was being ordered as notional); #1141 signed uPnL levels on ticket cards; #1146 total-margin line only when every leg is margin-sized, with a plan-to-execute test. Open: no collateral check on adjust increases; what armed the +$1 stops seen on 14 Oct is unknown.
+- **Agent honesty:** #1147 planner no longer routes an unlinked user's trade to the pair node, which invented "two-leg pairs only"; #1148 thrown tool errors and empty feeds are reported as unavailable, not "nothing found"; #1149 composer stops refusing chart asks; #1153 no blank reply when an advanced run fails. Details: [[20th Oct 2026]]; lesson: [[Engineering Lessons#A thrown tool error is not a tool result, so a summary built from results omits failures]].
+- **Reliability:** #1143 advanced stream that opens then fails falls back to the second model; #1144 losing Link tap no longer deletes the winner's marker; #1145 touch-priors upserts batched to stay inside the Prisma pool (cause of the 17 and 18 Oct failures unconfirmed); #1152 poll-failure and Discord alert floods capped.
+- **Not merged:** `c861b8b6`, Elfa v3 events behind `ELFA_EVENTS_INTEREST` (branch `worktree-feat-elfa-v3-events-eval`, no PR).
+
+**Evidence:** [[19th Oct 2026]], [[20th Oct 2026]], PR bodies #1139 to #1153.
+
+---
+
+### 2026-10-21 — Controller input validation finished across chat, auth, partner, journal, onboarding and the Elfa webhook *(in review, not on development)*
+
+**Status:** #1159 and #1160 merged into #1154's branch (`fix/chat-body-validation`). #1154 is open against `development`, retitled `fix(api): validate controller inputs with zod and strip NUL bytes`, and closes #1127 and #1158 on merge.
+
+- **Fixed:** #1159 covers #1158 rows 1 to 5: `/chat/execute` body (top-level shape, `TradePlanSchema` reused), partner `sessionId`, self-link `code`/`force` (`"false"` no longer counts as true), journal `cursor`, messages `pageSize` bounded 1 to 50. #1160 covers rows 8 and 12: a number onboarding answer threw a 500 on `.trim()`, and an unsigned Elfa webhook with a non-string title got a 500 instead of a 401.
+- **Decided not to fix:** rows 9 to 11 already end in a correct refusal. Row 6 was already done by #1154. Row 15 (trade-ticket Redis parses) skipped because existing null-on-parse-failure and the single-use plan token already contain it. Each decision is recorded in the #1158 table.
+- **Verified:** tsc clean, 69 suites / 1071 tests passing on the merged branch. Not run: full suite, `test:e2e`, live API.
+- **Open:** `/chat/execute` still forwards undocumented keys (`userId`, `sessionId`, `history`) to the DAG. Whether that should stay is undecided.
+
+**Evidence:** [[21st Oct 2026]], PRs #1154, #1159, #1160, issue #1158. Lessons: [[Engineering Lessons#In zod v4 an object key typed z.unknown() or z.custom() is required unless marked optional]], [[Engineering Lessons#An audit row that says unchecked input reaches X is a lead, not a bug, until the path is traced]].
+
+### 2026-10-21 → 2026-10-23 — Generated baskets: measured them properly, found the picks are about random and the AI chases, built a guarded rule *(rule committed, not pushed, off by default)*
+
+**Status:** #1162 (story, body rewritten 10-23 to current state). Eval script on `feat/basket-eval-script` (draft #1166). Buy rule `398517c5` on `feat/basket-no-top-gainer-buy`, not pushed. Coverage gap filed as #1167.
+
+- **Measured:** read-only eval of ~3.3k baskets (05-27 → 10-22). Basket results follow the market (long-only +2.73% / short-only −6.82% in a rising month, the reverse in a falling one). Against same-platform tradable peers, buys rank 52%, sells 51%: about random.
+- **Corrected myself twice:** the first read's "+0.65% selection" depended on the yardstick (BTC, mean coin and median coin all disagreed), and the peer groups were polluted because ~44% of listings have no sentiment category. Both corrections posted on #1162.
+- **Built:** "no buy of last week's top-15% gainer" (prompt line + post-generation reject, behind `BASKET_NO_TOP_GAINER_BUY`). Backtest: buy rank 52.0 → 55.8, 4 of 5 months, returns flat. 37/37 specs, tsc, biome, read-only live dry check.
+- **Found:** `/categories` is a hard-coded list in pear-stat-arbs unchanged since January. Chip menu is AMD/INTC/MU/NVDA only, likely part of the repeat problem. Filed #1167.
+- **Open:** out-of-sample verdict ~11-13 (weekly scheduled check), product calls on net long / leverage / long-only, which weights the web app trades.
+
+**Evidence:** [[22nd Oct 2026]], [[23rd Oct 2026]], [[Basket Quality — Staged Improvement Plan]], issues #1162, #1167, PR #1166.
+
 ---
 
 ## Recurring Engineering Themes
