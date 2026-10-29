@@ -644,3 +644,13 @@ Of the 19 rows in the #1158 input audit, several described a real gap that turne
 **Why it matters:** fixing every row adds 400s that can break sloppy but working clients, plus schemas that need dual maintenance, for no reliability gain. Trace each row to where the value is used and fix only the ones that crash, persist bad data, or change an action.
 
 **Evidence:** [[21st Oct 2026]], #1158 Decision column, PRs #1159 and #1160.
+
+### Before comparing two systems, check where the baseline's numbers came from and what each one counts
+
+Two of the first Elfa vs Pear comparisons were wrong in the same way: the baseline was not what it looked like.
+
+**Context:** the first rule comparison showed Elfa writing news-only rules for 239 of 295 watches. 235 of them were Pear's own catalyst template, written when the watch had expired, so Elfa's builder never saw that text. The fair set was the 36 live watches. Later, a curated price row read "Elfa 111, Pear ≈85" because it counted pings. Counted as distinct moves, both caught 49 of 49, and Pear's misses were repeat pings inside its cooldown. A "23% false alarms" figure also shrank to 4 of 28 once crossing legs were checked over a window instead of at one sample.
+
+**Why it matters:** a comparison is only as fair as its inputs and its unit. Before reporting a gap, trace each baseline row to the code that produced it, make both sides see the same input, and count the thing a user cares about (moves, not pings).
+
+**Evidence:** [[29th Oct 2026#Rule builder fixes, Elfa comparison, first-reading decision (late)]], [[29th Oct 2026#Curated price alerts: distinct moves caught (replaces the "≈85 of 111" estimate)]].

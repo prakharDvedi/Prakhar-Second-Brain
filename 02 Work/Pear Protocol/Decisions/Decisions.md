@@ -14,3 +14,4 @@ Navigation only — open the note for context, tradeoffs, and evidence.
 - [[Confirm-Time Margin Gate]] — add a fail-closed margin check at confirm time, exempting reduce-only adjustments.
 - [[Familiar-Asset Ranking — Final Plan]] — rank assets by 0.65 current holders + 0.35 90-day openers (distinct Pear traders), union the top 20 into the daily narrative universe, and pick pair vs basket per idea on evidence (§11).
 - [[Coinglass HL Wallet Distribution — Retire, Don't Mute]] — retire the 2 dead HL wallet endpoints and say wallet data is unavailable, instead of muting a tool that fails on every call.
+- [[Elfa Replacement — One Switch, Not Math-First]] — `PEAR_SIGNALS_LIVE` hands every alert to Pear at once and the reconcile calls Elfa for nothing; first readings never fire; `maxTriggers` caps personal alerts only.

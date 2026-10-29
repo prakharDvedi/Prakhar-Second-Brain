@@ -547,6 +547,30 @@ Grouped chronologically by underlying problem, not by PR title. Iterative PRs on
 
 ---
 
+### 2026-10-28 → 2026-10-29 — Elfa replacement step 2: math re-measure root cause, measurer fix, local shadow poller *(in progress, local branch only)*
+**Commits:** `e7a82057` on `investigate/elfa-step2` (not pushed) · `Confirmed`
+
+- Found why 34% of math fires failed Pear's re-measure from Railway logs: Elfa's funding values were wrong (Pear matched Hyperliquid), Pear built Bollinger with the live candle, and read liquidation from the just-opened Coinglass hour.
+- Fixed Bollinger (closed candles) and liquidation (trailing 60 min of 5m buckets). Liquidation not verified live, Coinglass returns `401 Upgrade plan` since 28 Oct.
+- Elfa is paused, so backtested the 598 past math fires against Hyperliquid history: price triggers real in 111 of 112, funding in 22 of 94.
+- Built a log-only minute poller (`MathShadowProcessor`) that detects the curated math triggers from Pear's own data. Uncommitted, not run live.
+
+**Evidence:** [[Elfa Triggers, Three Classes (Step 1)]], [[28th Oct 2026]], [[29th Oct 2026]].
+
+**Update 2026-10-29 (end of day):** status above is stale. Work is pushed and in draft PRs, all on the Elfa replacement stack (epic #1190 → `development`, math #1191 on `elfa/math`, narrative #1192, twitter #1193). `Confirmed`
+- Math commits on `elfa/math` (11): re-measure fixes (Bollinger, liquidation, RSI, SMA, EMA, Bollinger middle, 2h/4h change, kPEPE casing), shadow poller for curated + 47 personal math triggers, `eth-funding-flip` dead band at −3% APR from a funding backtest, touch sweep and log fixes, and cutover part one (`de8f2a03`, `PEAR_SIGNALS_LIVE`).
+- Personal math triggers Pear can measure: 27 → 46 of 47.
+- Found that personal triggers depend on Elfa Builder Chat to write their rules, so a Pear rule builder is a launch blocker.
+
+**Update 2026-10-29 (late):** Pear rule builder and math comparison done. `Confirmed`
+- Commits on `elfa/math`, pushed: `bb4c16a6` rule builder (Haiku 5.5, keeps a rule only if the measurer can read every leg, 24h backoff on rejects, Kalshi contract picks for Fed/CPI/jobs), `98c4b1d9` OR rules drop an unreadable leg and moves allow 1h to 72h windows, `9aa82cd0` personal fires capped at `maxTriggers` (3) per week.
+- Live personal watches: Pear builds 36/36 from the current watch text, Elfa had 5 armed and 0 rules from the current text (100-query plan cap left 30 personal slots, 271 of 295 rows evicted).
+- Replay of 46 past personal rules: Pear 0.63 fires per rule per day with the cap vs Elfa 0.85. Curated price: both catch 49 of 49 distinct moves, Pear with 54 pings vs Elfa's 87. Funding: Pear 16/28 flips held vs Elfa 18/94.
+- Decisions: a first reading never fires, `maxTriggers` caps personal only. Dashboard: https://claude.ai/artifact/1XaJ5QtNaBFkDTm12AktBJ
+- Open: Elfa arming gate, dev rehearsal, Coinglass (#1180 reopened).
+
+**Update 2026-10-30:** math code work done. `d4befdc5` (pushed): with `PEAR_SIGNALS_LIVE` on, the trigger reconcile calls Elfa for nothing, saves every rule for Pear, runs while Elfa is down, and the poller covers the 3 Kalshi alerts and reads only armed rows. Decision: one switch for the whole product, see [[Elfa Replacement — One Switch, Not Math-First]]. PR #1191 description updated. Open: shadow run check (ends ~1 Nov), dev rehearsal, Coinglass (#1180), then the news track. `Confirmed`
+
 ## Recurring Engineering Themes
 
 Only themes with independent support across multiple, separately-dated pieces of work.
